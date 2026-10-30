@@ -7,6 +7,7 @@ Lire docs/specification.md, docs/workflow.md et la fiche docs/features de l’is
 - Une feature = une issue GitHub = une tâche Multica = une branche et une PR dédiée. Réutiliser la PR en brouillon existante. Conserver `Closes #N` et l’identifiant JOUR de la tâche dans sa description.
 - Conserver le propriétaire développeur dans les métadonnées de la tâche. Une correction revient à ce propriétaire, jamais à un nouveau développeur arbitraire.
 - Travailler dans le worktree isolé fourni par Multica. Ne jamais modifier le checkout ou la branche d’un autre agent.
+- Conserver la branche locale attribuée par le daemon. Y intégrer `origin/main` et la branche distante de la PR dédiée avant développement, puis pousser `HEAD:feature/N-nom` vers cette PR. Ne pas créer une seconde PR parce que le nom de la branche du worktree diffère de celui de la PR.
 - Implémenter et vérifier les critères d’acceptation ; une fiche de spécification seule ne livre pas la feature. Ne pas élargir le périmètre sans justification dans l’issue.
 - Ne jamais publier de secrets ni de données réelles de bénéficiaires. Les fixtures sont synthétiques.
 - Une PR prête passe d’abord par CodeRabbit. Le Reviewer n’est ni assigné ni réveillé pour une revue de code avant que CodeRabbit ait approuvé le dernier SHA, sans remarque ouverte ni erreur. Une revue absente, ignorée, limitée ou périmée bloque le passage.

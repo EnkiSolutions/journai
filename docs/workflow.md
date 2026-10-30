@@ -4,7 +4,7 @@
 
 Pi exécute tous les agents. L’Orchestrateur et le Reviewer utilisent GPT-6.1 Sol xHigh ; les développeurs Socle & Données, Métier & API, Interface & Collaboration et l’agent Gate CodeRabbit utilisent Strata.
 
-Le projet Multica utilise D:\Prog\journai en mode worktree. La tâche de pilotage conserve la file ordonnée et les dépendances. Les fiches de features, issues, tâches et PR sont répertoriées dans docs/backlog.md.
+Le projet Multica utilise D:\Prog\journai en mode worktree. La tâche de pilotage conserve la file ordonnée et les dépendances. Les fiches de features, issues, tâches et PR sont répertoriées dans docs/backlog.md. Le développeur garde la branche locale fournie par le daemon, y intègre la branche distante dédiée et le dernier main, puis pousse `HEAD:feature/N-nom` vers la PR existante.
 
 ## Transitions
 
@@ -16,7 +16,7 @@ Le projet Multica utilise D:\Prog\journai en mode worktree. La tâche de pilotag
 6. Sur approbation : exécuter le gate avec le certificat, publier le certificat dans la PR, puis fusionner avec un contrôle atomique du SHA. Les certificats volumineux sont publiés en plusieurs commentaires indexés sans omettre de ligne. Un simple statut vert de CodeRabbit n’est pas une preuve suffisante ; le bot doit approuver le SHA courant et n’avoir aucun fil non résolu. Si GitHub refuse une auto-revue parce que les deux agents partagent le même compte, le certificat et le statut `JournAI Reviewer` constituent la validation de l’agent ; ne pas inventer une approbation GitHub native.
 7. Une fois la fusion confirmée, mettre la tâche Terminée et notifier immédiatement l’Orchestrateur sur la tâche de pilotage. Celui-ci assigne la prochaine feature prête. Sur rejet : rendre immédiatement la tâche au `developer_agent_id`, passer En cours et fournir les corrections. Toute nouvelle révision repasse par CodeRabbit.
 
-La fin d’une exécution Multica seule ne vaut ni validation ni livraison. Le réveil périodique du pilotage récupère les transitions manquées et reste silencieux si rien ne change. Le parent reste ouvert jusqu’à livraison de toutes les features.
+La fin d’une exécution Multica seule ne vaut ni validation ni livraison. La règle native `child_done` du parent réveille l’Orchestrateur dès qu’une feature se termine. Le réveil périodique du pilotage récupère les transitions manquées et reste silencieux si rien ne change. Le parent reste ouvert jusqu’à livraison de toutes les features.
 
 ## Contrôles de preuve
 
