@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://www.coderabbit.ai/integrations/schema.v2.json
+language: fr
+early_access: false
+reviews:
+  profile: assertive
+  review_status: true
+  review_info: true
+  review_progress: true
+  commit_status: true
+  fail_commit_status: true
+  poem: false
+  auto_approvals:
+    enabled: true
+    allow_author_approval: false
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 0
+    drafts: false
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        Vérifier la conformité à docs/specification.md et à l'issue liée.
+        Signaler toute ligne sans utilité pour les critères d'acceptation.
+        Vérifier l'isolation par espace et projet, la sécurité des actions partagées,
+        les invariants relationnels, les versions immuables et l'absence de double comptage.
+        Les commentaires exploitables doivent être corrigés puis revus sur le dernier SHA.
+        Ne pas considérer une spécification seule comme une fonctionnalité implémentée.
+chat:
+  auto_reply: true
