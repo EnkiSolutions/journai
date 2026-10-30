@@ -1,0 +1,1156 @@
+{
+  "tables": [
+    {
+      "table": "utilisateur",
+      "rows": [
+        {
+          "id": "u-admin",
+          "nom_affiche": "Admin Synthétique",
+          "email": "admin@synthese.test",
+          "cree_le": "2026-01-05T09:00:00+00:00"
+        },
+        {
+          "id": "u-contributeur",
+          "nom_affiche": "Contributeuse Synthétique",
+          "email": "contributeur@synthese.test",
+          "cree_le": "2026-01-05T09:00:00+00:00"
+        },
+        {
+          "id": "u-espace-b",
+          "nom_affiche": "Agent Espace B",
+          "email": "agent-b@synthese.test",
+          "cree_le": "2026-01-05T09:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "table": "espace",
+      "rows": [
+        {
+          "id": "a-espace",
+          "nom": "Espace Santé Service",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "table": "membre_espace",
+      "rows": [
+        {
+          "espace_id": "a-espace",
+          "utilisateur_id": "u-admin",
+          "role": "administrateur"
+        },
+        {
+          "espace_id": "a-espace",
+          "utilisateur_id": "u-contributeur",
+          "role": "contributeur"
+        }
+      ]
+    },
+    {
+      "table": "structure",
+      "rows": [
+        {
+          "id": "a-agglo",
+          "espace_id": "a-espace",
+          "nom": "Agglomération Synthétique",
+          "type_structure": "collectivite",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-maison",
+          "espace_id": "a-espace",
+          "nom": "Maison des Services",
+          "type_structure": "association",
+          "cree_par": "u-contributeur",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "projet",
+      "rows": [
+        {
+          "id": "a-proj-orientation",
+          "espace_id": "a-espace",
+          "structure_pilote_id": "a-agglo",
+          "nom": "Parcours Orientation 2026",
+          "finalite": "Réduire les ruptures de parcours des publics éloignés du service public.",
+          "responsable_id": "u-admin",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-proj-numerique",
+          "espace_id": "a-espace",
+          "structure_pilote_id": "a-maison",
+          "nom": "Appui Numérique Quotidien",
+          "finalite": "Rendre l'accès aux démarches dématérialisées compris et tenu.",
+          "responsable_id": "u-contributeur",
+          "cree_par": "u-contributeur",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "projet_structure",
+      "rows": [
+        {
+          "projet_id": "a-proj-orientation",
+          "structure_id": "a-agglo",
+          "espace_id": "a-espace",
+          "role_dans_projet": "pilote"
+        },
+        {
+          "projet_id": "a-proj-orientation",
+          "structure_id": "a-maison",
+          "espace_id": "a-espace",
+          "role_dans_projet": "contributeur"
+        },
+        {
+          "projet_id": "a-proj-numerique",
+          "structure_id": "a-maison",
+          "espace_id": "a-espace",
+          "role_dans_projet": "pilote"
+        }
+      ]
+    },
+    {
+      "table": "membre_projet",
+      "rows": [
+        {
+          "projet_id": "a-proj-orientation",
+          "utilisateur_id": "u-admin",
+          "espace_id": "a-espace",
+          "role": "pilote",
+          "capacite_hebdomadaire_h": 2
+        },
+        {
+          "projet_id": "a-proj-orientation",
+          "utilisateur_id": "u-contributeur",
+          "espace_id": "a-espace",
+          "role": "contributeur",
+          "capacite_hebdomadaire_h": 6
+        },
+        {
+          "projet_id": "a-proj-numerique",
+          "utilisateur_id": "u-contributeur",
+          "espace_id": "a-espace",
+          "role": "pilote"
+        }
+      ]
+    },
+    {
+      "table": "public",
+      "rows": [
+        {
+          "id": "a-pub-beneficiaires",
+          "espace_id": "a-espace",
+          "nom": "Bénéficiaires accueil",
+          "role_interlocuteur": "beneficiaire",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-pub-jeunes",
+          "espace_id": "a-espace",
+          "parent_id": "a-pub-beneficiaires",
+          "nom": "Jeunes 16-25",
+          "role_interlocuteur": "beneficiaire",
+          "cree_par": "u-contributeur",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-pub-aidants",
+          "espace_id": "a-espace",
+          "parent_id": "a-pub-beneficiaires",
+          "nom": "Aidants familiaux",
+          "role_interlocuteur": "aidant",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "canal",
+      "rows": [
+        {
+          "id": "a-canal-guichet",
+          "espace_id": "a-espace",
+          "nom": "Guichet physique",
+          "type_canal": "guichet",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-canal-telephone",
+          "espace_id": "a-espace",
+          "nom": "Ligne téléphonique",
+          "type_canal": "telephone",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "point_contact",
+      "rows": [
+        {
+          "id": "a-pc-accueil",
+          "espace_id": "a-espace",
+          "projet_id": "a-proj-orientation",
+          "nom": "Comptoir d'accueil",
+          "intention": "Repérer la demande réelle et orienter sans rendez-vous.",
+          "responsable_id": "u-contributeur",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "parcours",
+      "rows": [
+        {
+          "id": "a-parc-insertion",
+          "espace_id": "a-espace",
+          "projet_id": "a-proj-orientation",
+          "nom": "Parcours premier accueil",
+          "finalite": "Un accueil compris qui engage le public vers l'étape suivante.",
+          "responsable_id": "u-admin",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "parcours_public",
+      "rows": [
+        {
+          "parcours_id": "a-parc-insertion",
+          "public_id": "a-pub-jeunes",
+          "espace_id": "a-espace"
+        },
+        {
+          "parcours_id": "a-parc-insertion",
+          "public_id": "a-pub-aidants",
+          "espace_id": "a-espace"
+        }
+      ]
+    },
+    {
+      "table": "version_parcours",
+      "rows": [
+        {
+          "id": "a-vp-obs-1",
+          "parcours_id": "a-parc-insertion",
+          "espace_id": "a-espace",
+          "numero": 1,
+          "perspective": "observee",
+          "statut": "validee",
+          "valide_par": "u-admin",
+          "valide_le": "2026-01-20T10:00:00+00:00",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-vp-cible-1",
+          "parcours_id": "a-parc-insertion",
+          "espace_id": "a-espace",
+          "numero": 1,
+          "perspective": "cible",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-vp-cible-2",
+          "parcours_id": "a-parc-insertion",
+          "espace_id": "a-espace",
+          "numero": 2,
+          "perspective": "cible",
+          "version_source_id": "a-vp-cible-1",
+          "cree_par": "u-contributeur",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "etape",
+      "rows": [
+        {
+          "id": "a-e-obs-contact",
+          "version_parcours_id": "a-vp-obs-1",
+          "espace_id": "a-espace",
+          "cle_stable": "accueil-01",
+          "titre": "Premier contact",
+          "objectif_public": "Comprendre la demande et ses pièces.",
+          "ordre_affichage": 1,
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-e-obs-suivi",
+          "version_parcours_id": "a-vp-obs-1",
+          "espace_id": "a-espace",
+          "cle_stable": "suivi-01",
+          "titre": "Suivi après orientation",
+          "objectif_public": "Tenir le rendez-vous pris et sa réponse.",
+          "ordre_affichage": 2,
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-e-c1-contact",
+          "version_parcours_id": "a-vp-cible-1",
+          "espace_id": "a-espace",
+          "cle_stable": "accueil-01",
+          "titre": "Premier contact",
+          "objectif_public": "Comprendre la demande et ses pièces.",
+          "ordre_affichage": 1,
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-e-c1-suivi",
+          "version_parcours_id": "a-vp-cible-1",
+          "espace_id": "a-espace",
+          "cle_stable": "suivi-01",
+          "titre": "Suivi après orientation",
+          "objectif_public": "Tenir le rendez-vous pris et sa réponse.",
+          "ordre_affichage": 2,
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-e-c2-contact",
+          "version_parcours_id": "a-vp-cible-2",
+          "espace_id": "a-espace",
+          "cle_stable": "accueil-01",
+          "titre": "Premier contact",
+          "objectif_public": "Comprendre la demande et ses pièces.",
+          "ordre_affichage": 1,
+          "cree_par": "u-contributeur",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-e-c2-suivi",
+          "version_parcours_id": "a-vp-cible-2",
+          "espace_id": "a-espace",
+          "cle_stable": "suivi-01",
+          "titre": "Suivi après orientation",
+          "objectif_public": "Tenir le rendez-vous pris et sa réponse.",
+          "ordre_affichage": 2,
+          "cree_par": "u-contributeur",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "transition_etape",
+      "rows": [
+        {
+          "id": "a-t-obs",
+          "version_parcours_id": "a-vp-obs-1",
+          "espace_id": "a-espace",
+          "etape_source_id": "a-e-obs-contact",
+          "etape_destination_id": "a-e-obs-suivi",
+          "ordre_affichage": 1,
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-t-c1",
+          "version_parcours_id": "a-vp-cible-1",
+          "espace_id": "a-espace",
+          "etape_source_id": "a-e-c1-contact",
+          "etape_destination_id": "a-e-c1-suivi",
+          "ordre_affichage": 1,
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-t-c2",
+          "version_parcours_id": "a-vp-cible-2",
+          "espace_id": "a-espace",
+          "etape_source_id": "a-e-c2-contact",
+          "etape_destination_id": "a-e-c2-suivi",
+          "ordre_affichage": 1,
+          "cree_par": "u-contributeur",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "occurrence_contact",
+      "rows": [
+        {
+          "id": "a-o-obs-contact-guichet",
+          "espace_id": "a-espace",
+          "etape_id": "a-e-obs-contact",
+          "point_contact_id": "a-pc-accueil",
+          "canal_id": "a-canal-guichet",
+          "cle_stable": "accueil-guichet",
+          "besoin_public": "Vérifier une pièce manquante.",
+          "experience_attendue": "Une réponse claire en une visite.",
+          "criticite": "majeure",
+          "etat_operationnel": "assure",
+          "frequence": "quotidienne",
+          "ordre_affichage": 1,
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-o-c1-contact-guichet",
+          "espace_id": "a-espace",
+          "etape_id": "a-e-c1-contact",
+          "point_contact_id": "a-pc-accueil",
+          "canal_id": "a-canal-guichet",
+          "cle_stable": "accueil-guichet",
+          "besoin_public": "Vérifier une pièce manquante.",
+          "experience_attendue": "Une réponse claire en une visite.",
+          "criticite": "majeure",
+          "etat_operationnel": "assure",
+          "frequence": "quotidienne",
+          "ordre_affichage": 1,
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-o-c2-contact-guichet",
+          "espace_id": "a-espace",
+          "etape_id": "a-e-c2-contact",
+          "point_contact_id": "a-pc-accueil",
+          "canal_id": "a-canal-guichet",
+          "cle_stable": "accueil-guichet",
+          "besoin_public": "Vérifier une pièce manquante.",
+          "experience_attendue": "Une réponse claire en une visite.",
+          "criticite": "majeure",
+          "etat_operationnel": "assure",
+          "frequence": "quotidienne",
+          "ordre_affichage": 1,
+          "cree_par": "u-contributeur",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-o-obs-contact-telephone",
+          "espace_id": "a-espace",
+          "etape_id": "a-e-obs-contact",
+          "point_contact_id": "a-pc-accueil",
+          "canal_id": "a-canal-telephone",
+          "cle_stable": "accueil-telephone",
+          "besoin_public": "Joindre sans se déplacer.",
+          "experience_attendue": "Un rappel dans la journée.",
+          "criticite": "mineure",
+          "etat_operationnel": "assure",
+          "frequence": "hebdomadaire",
+          "ordre_affichage": 2,
+          "cree_par": "u-contributeur",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-o-obs-suivi",
+          "espace_id": "a-espace",
+          "etape_id": "a-e-obs-suivi",
+          "point_contact_id": "a-pc-accueil",
+          "canal_id": "a-canal-telephone",
+          "cle_stable": "suivi-telephone",
+          "besoin_public": "Confirmer le rendez-vous pris.",
+          "experience_attendue": "Un suivi sans relance du public.",
+          "criticite": "majeure",
+          "etat_operationnel": "assure",
+          "frequence": "hebdomadaire",
+          "ordre_affichage": 1,
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "operation",
+      "rows": [
+        {
+          "id": "a-op-guichet",
+          "espace_id": "a-espace",
+          "projet_pilote_id": "a-proj-orientation",
+          "nom": "Tenue du comptoir",
+          "responsable_id": "u-contributeur",
+          "frequence": "quotidienne",
+          "mode_execution": "humain",
+          "etat_operationnel": "assure",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-op-relance",
+          "espace_id": "a-espace",
+          "projet_pilote_id": "a-proj-numerique",
+          "nom": "Relance téléphonique de suivi",
+          "responsable_id": "u-contributeur",
+          "frequence": "hebdomadaire",
+          "mode_execution": "humain",
+          "etat_operationnel": "assure",
+          "cree_par": "u-contributeur",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "ressource",
+      "rows": [
+        {
+          "id": "a-res-local",
+          "espace_id": "a-espace",
+          "projet_pilote_id": "a-proj-orientation",
+          "nom": "Salle d'accueil rez-de-chaussée",
+          "type_ressource": "local",
+          "etat": "disponible",
+          "responsable_id": "u-contributeur",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-res-planning",
+          "espace_id": "a-espace",
+          "projet_pilote_id": "a-proj-numerique",
+          "nom": "Planning agent synthétique",
+          "type_ressource": "logiciel",
+          "etat": "reserve",
+          "responsable_id": "u-admin",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "occurrence_operation",
+      "rows": [
+        {
+          "occurrence_contact_id": "a-o-obs-contact-guichet",
+          "operation_id": "a-op-guichet",
+          "espace_id": "a-espace",
+          "role_operation": "contributif"
+        },
+        {
+          "occurrence_contact_id": "a-o-obs-suivi",
+          "operation_id": "a-op-relance",
+          "espace_id": "a-espace",
+          "role_operation": "contributif"
+        }
+      ]
+    },
+    {
+      "table": "occurrence_ressource",
+      "rows": [
+        {
+          "occurrence_contact_id": "a-o-obs-contact-guichet",
+          "ressource_id": "a-res-local",
+          "espace_id": "a-espace",
+          "usage": "Guichet d'accueil",
+          "etat_utilisation": "necessaire"
+        },
+        {
+          "occurrence_contact_id": "a-o-obs-suivi",
+          "ressource_id": "a-res-planning",
+          "espace_id": "a-espace",
+          "usage": "Agenda de rappel",
+          "etat_utilisation": "subi"
+        }
+      ]
+    },
+    {
+      "table": "constat",
+      "rows": [
+        {
+          "id": "a-constat-file",
+          "espace_id": "a-espace",
+          "occurrence_contact_id": "a-o-obs-contact-guichet",
+          "auteur_id": "u-contributeur",
+          "type_constat": "fait_validé",
+          "description": "Le guichet saturé produit une attente de 40 minutes en fin de matinée.",
+          "source": "Comptage synthétique sur 5 matinées",
+          "observe_le": "2026-02-03",
+          "niveau_confiance": "forte",
+          "statut_validation": "validé",
+          "cree_par": "u-contributeur",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-constat-hyp",
+          "espace_id": "a-espace",
+          "occurrence_contact_id": "a-o-obs-suivi",
+          "auteur_id": "u-admin",
+          "type_constat": "hypothèse",
+          "description": "Les rappels non tenus semblent venir d'un agenda non partagé.",
+          "source": "Dires d'équipe synthétiques",
+          "observe_le": "2026-02-04",
+          "niveau_confiance": "faible",
+          "statut_validation": "à vérifier",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "action",
+      "rows": [
+        {
+          "id": "a-act-fiche",
+          "espace_id": "a-espace",
+          "projet_pilote_id": "a-proj-orientation",
+          "titre": "Fiche de liaison d'accueil",
+          "description": "Une fiche unique reprise au guichet et au suivi téléphonique.",
+          "nature": "livrable",
+          "statut": "priorise",
+          "responsable_id": "u-contributeur",
+          "critere_acceptation": "La fiche reprend demande, pièce manquante et engagement pris.",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-act-planning",
+          "espace_id": "a-espace",
+          "projet_pilote_id": "a-proj-numerique",
+          "titre": "Planning partagé des rappels",
+          "description": "Un agenda partagé par l'équipe pour les rappels de suivi.",
+          "nature": "support",
+          "statut": "propose",
+          "responsable_id": "u-admin",
+          "critere_acceptation": "Chaque rappel apparaît avec son agent et sa date.",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-act-jalon-test",
+          "espace_id": "a-espace",
+          "projet_pilote_id": "a-proj-orientation",
+          "action_parent_id": "a-act-fiche",
+          "titre": "Jalon test de la fiche",
+          "description": "Jalon de test de la fiche de liaison.",
+          "nature": "jalons",
+          "statut": "propose",
+          "responsable_id": "u-contributeur",
+          "critere_acceptation": "Test réalisé sur 3 accueil complets.",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "action_projet",
+      "rows": [
+        {
+          "action_id": "a-act-fiche",
+          "projet_id": "a-proj-orientation",
+          "espace_id": "a-espace",
+          "motif_rattachement": "Livrable attendu du parcours d'accueil.",
+          "part_charge": 60,
+          "part_budget": 100
+        },
+        {
+          "action_id": "a-act-fiche",
+          "projet_id": "a-proj-numerique",
+          "espace_id": "a-espace",
+          "motif_rattachement": "Fiche utilisée par l'appui numérique.",
+          "part_charge": 40,
+          "part_budget": 0
+        },
+        {
+          "action_id": "a-act-planning",
+          "projet_id": "a-proj-numerique",
+          "espace_id": "a-espace",
+          "motif_rattachement": "Support du suivi téléphonique.",
+          "part_charge": 100,
+          "part_budget": 100
+        }
+      ]
+    },
+    {
+      "table": "action_occurrence",
+      "rows": [
+        {
+          "action_id": "a-act-fiche",
+          "occurrence_contact_id": "a-o-obs-contact-guichet",
+          "espace_id": "a-espace",
+          "effet_attendu": "réduit",
+          "etat_validation_effet": "valide"
+        },
+        {
+          "action_id": "a-act-fiche",
+          "occurrence_contact_id": "a-o-obs-suivi",
+          "espace_id": "a-espace",
+          "effet_attendu": "fluidifie",
+          "etat_validation_effet": "propose"
+        }
+      ]
+    },
+    {
+      "table": "action_operation",
+      "rows": [
+        {
+          "action_id": "a-act-fiche",
+          "operation_id": "a-op-guichet",
+          "espace_id": "a-espace",
+          "nature_intervention": "modifier"
+        }
+      ]
+    },
+    {
+      "table": "action_ressource",
+      "rows": [
+        {
+          "action_id": "a-act-fiche",
+          "ressource_id": "a-res-local",
+          "espace_id": "a-espace",
+          "nature_intervention": "controler"
+        }
+      ]
+    },
+    {
+      "table": "action_constat",
+      "rows": [
+        {
+          "action_id": "a-act-fiche",
+          "constat_id": "a-constat-file",
+          "espace_id": "a-espace"
+        }
+      ]
+    },
+    {
+      "table": "dependance_action",
+      "rows": [
+        {
+          "action_id": "a-act-jalon-test",
+          "prerequis_id": "a-act-fiche",
+          "espace_id": "a-espace",
+          "justification": "Le jalon de test présuppose la fiche."
+        }
+      ]
+    },
+    {
+      "table": "contribution_action",
+      "rows": [
+        {
+          "action_id": "a-act-fiche",
+          "utilisateur_id": "u-contributeur",
+          "espace_id": "a-espace",
+          "role_contribution": "responsable",
+          "charge_prevue_h": 8,
+          "charge_realisee_h": 3
+        },
+        {
+          "action_id": "a-act-fiche",
+          "utilisateur_id": "u-admin",
+          "espace_id": "a-espace",
+          "role_contribution": "consulte",
+          "charge_prevue_h": 1
+        }
+      ]
+    },
+    {
+      "table": "estimation_action",
+      "rows": [
+        {
+          "id": "a-est-fiche",
+          "action_id": "a-act-fiche",
+          "espace_id": "a-espace",
+          "auteur_id": "u-admin",
+          "complexite_technique": "faible",
+          "complexite_organisationnelle": "moyenne",
+          "incertitude": "moyenne",
+          "charge_min_h": 6,
+          "charge_max_h": 18,
+          "cout_min": 300,
+          "cout_max": 900,
+          "devise": "EUR",
+          "justification": "Reprise d'un support existant, validation par l'équipe d'accueil.",
+          "cree_le": "2026-01-05T09:00:00+00:00"
+        },
+        {
+          "id": "a-est-planning",
+          "action_id": "a-act-planning",
+          "espace_id": "a-espace",
+          "auteur_id": "u-contributeur",
+          "complexite_technique": "moyenne",
+          "complexite_organisationnelle": "forte",
+          "incertitude": "haute",
+          "charge_min_h": 4,
+          "charge_max_h": 12,
+          "justification": "Accord des agents sur un agenda partagé.",
+          "cree_le": "2026-01-05T09:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "table": "evaluation_action",
+      "rows": [
+        {
+          "id": "a-eval-fiche-orient",
+          "action_id": "a-act-fiche",
+          "projet_id": "a-proj-orientation",
+          "espace_id": "a-espace",
+          "auteur_id": "u-admin",
+          "importance": "forte",
+          "impact_attendu": "forte",
+          "confiance": "moyenne",
+          "justification": "Réduit l'attente au guichet.",
+          "cree_le": "2026-02-05T09:00:00+00:00"
+        },
+        {
+          "id": "a-eval-fiche-num",
+          "action_id": "a-act-fiche",
+          "projet_id": "a-proj-numerique",
+          "espace_id": "a-espace",
+          "auteur_id": "u-contributeur",
+          "importance": "moyenne",
+          "impact_attendu": "moyenne",
+          "confiance": "faible",
+          "justification": "Apporte peu à l'appui numérique.",
+          "cree_le": "2026-02-05T09:30:00+00:00"
+        },
+        {
+          "id": "a-eval-planning",
+          "action_id": "a-act-planning",
+          "projet_id": "a-proj-numerique",
+          "espace_id": "a-espace",
+          "auteur_id": "u-admin",
+          "importance": "forte",
+          "impact_attendu": "forte",
+          "confiance": "moyenne",
+          "justification": "Sécurise le suivi téléphonique.",
+          "cree_le": "2026-02-05T10:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "table": "decision_priorite",
+      "rows": [
+        {
+          "id": "a-dec-fiche-0",
+          "action_id": "a-act-fiche",
+          "projet_id": "a-proj-orientation",
+          "espace_id": "a-espace",
+          "estimation_retenue_id": "a-est-fiche",
+          "evaluation_retenue_id": "a-eval-fiche-orient",
+          "classe_priorite": "programme",
+          "rang": 3,
+          "motif": "Retenu en programme avant la mesure d'attente.",
+          "decideur_id": "u-admin",
+          "decide_le": "2026-01-10T09:00:00+00:00"
+        },
+        {
+          "id": "a-dec-fiche-1",
+          "action_id": "a-act-fiche",
+          "projet_id": "a-proj-orientation",
+          "espace_id": "a-espace",
+          "estimation_retenue_id": "a-est-fiche",
+          "evaluation_retenue_id": "a-eval-fiche-orient",
+          "classe_priorite": "a_traiter",
+          "rang": 1,
+          "motif": "Motivation traçable : attente mesurée à 40 minutes au guichet.",
+          "decideur_id": "u-admin",
+          "decide_le": "2026-02-06T09:00:00+00:00",
+          "remplace_decision_id": "a-dec-fiche-0"
+        },
+        {
+          "id": "a-dec-planning",
+          "action_id": "a-act-planning",
+          "projet_id": "a-proj-numerique",
+          "espace_id": "a-espace",
+          "estimation_retenue_id": "a-est-planning",
+          "evaluation_retenue_id": "a-eval-planning",
+          "classe_priorite": "a_traiter",
+          "rang": 1,
+          "motif": "Suivi sans agenda partagé : relances subies.",
+          "decideur_id": "u-contributeur",
+          "decide_le": "2026-02-06T10:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "table": "objet",
+      "rows": [
+        {
+          "id": "a-parc-insertion",
+          "espace_id": "a-espace",
+          "type_objet": "parcours",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-vp-obs-1",
+          "espace_id": "a-espace",
+          "type_objet": "version_parcours",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-e-obs-contact",
+          "espace_id": "a-espace",
+          "type_objet": "etape",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-o-obs-contact-guichet",
+          "espace_id": "a-espace",
+          "type_objet": "occurrence_contact",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-constat-file",
+          "espace_id": "a-espace",
+          "type_objet": "constat",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-act-fiche",
+          "espace_id": "a-espace",
+          "type_objet": "action",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-dec-fiche-1",
+          "espace_id": "a-espace",
+          "type_objet": "decision_priorite",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-res-local",
+          "espace_id": "a-espace",
+          "type_objet": "ressource",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-op-guichet",
+          "espace_id": "a-espace",
+          "type_objet": "operation",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-ind-attente",
+          "espace_id": "a-espace",
+          "type_objet": "indicateur",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "commentaire",
+      "rows": [
+        {
+          "id": "a-cm-1",
+          "espace_id": "a-espace",
+          "objet_id": "a-o-obs-contact-guichet",
+          "auteur_id": "u-contributeur",
+          "contenu": "40 minutes d'attente constatées, à traiter avant l'été.",
+          "cree_le": "2026-02-04T11:00:00+00:00"
+        },
+        {
+          "id": "a-cm-2",
+          "espace_id": "a-espace",
+          "commentaire_parent_id": "a-cm-1",
+          "objet_id": "a-o-obs-contact-guichet",
+          "auteur_id": "u-admin",
+          "contenu": "Commentaire rattaché au constat de file d'attente.",
+          "cree_le": "2026-02-04T12:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "table": "abonnement",
+      "rows": [
+        {
+          "objet_id": "a-o-obs-contact-guichet",
+          "utilisateur_id": "u-admin",
+          "espace_id": "a-espace",
+          "niveau_notification": "a"
+        },
+        {
+          "objet_id": "a-act-fiche",
+          "utilisateur_id": "u-contributeur",
+          "espace_id": "a-espace",
+          "niveau_notification": "b"
+        }
+      ]
+    },
+    {
+      "table": "evenement",
+      "rows": [
+        {
+          "id": "a-ev-action-cree",
+          "espace_id": "a-espace",
+          "objet_id": "a-act-fiche",
+          "type_evenement": "cree",
+          "valeur_apres": "Fiche de liaison d'accueil",
+          "auteur_id": "u-admin",
+          "horodatage": "2026-01-06T09:00:00+00:00"
+        },
+        {
+          "id": "a-ev-etape-modifie",
+          "espace_id": "a-espace",
+          "objet_id": "a-e-obs-contact",
+          "type_evenement": "modifie",
+          "valeur_avant": "Comprendre la demande.",
+          "valeur_apres": "Comprendre la demande et ses pièces.",
+          "auteur_id": "u-contributeur",
+          "horodatage": "2026-01-18T09:00:00+00:00"
+        },
+        {
+          "id": "a-ev-commente",
+          "espace_id": "a-espace",
+          "objet_id": "a-o-obs-contact-guichet",
+          "type_evenement": "commente",
+          "valeur_apres": "Commentaire de file d'attente",
+          "auteur_id": "u-contributeur",
+          "horodatage": "2026-02-04T11:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "table": "notification",
+      "rows": [
+        {
+          "id": "a-not-1",
+          "espace_id": "a-espace",
+          "destinataire_id": "u-admin",
+          "evenement_id": "a-ev-commente",
+          "cree_le": "2026-02-04T11:05:00+00:00"
+        },
+        {
+          "id": "a-not-2",
+          "espace_id": "a-espace",
+          "destinataire_id": "u-contributeur",
+          "evenement_id": "a-ev-etape-modifie",
+          "cree_le": "2026-01-18T09:05:00+00:00",
+          "lu_le": "2026-01-19T08:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "table": "indicateur",
+      "rows": [
+        {
+          "id": "a-ind-attente",
+          "espace_id": "a-espace",
+          "projet_id": "a-proj-orientation",
+          "occurrence_contact_id": "a-o-obs-contact-guichet",
+          "nom": "Temps d'attente au guichet",
+          "definition": "Moyenne mensuelle du temps d'attente mesuré au guichet (synthétique).",
+          "unite": "minutes",
+          "mode_calcul": "moyenne",
+          "valeur_reference": 12,
+          "valeur_cible": 5,
+          "sens_amelioration": "decroitre",
+          "periodicite": "mensuelle",
+          "responsable_id": "u-admin",
+          "cree_par": "u-admin",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a-ind-couverture",
+          "espace_id": "a-espace",
+          "projet_id": "a-proj-numerique",
+          "nom": "Etapes couvertes par un support",
+          "definition": "Nombre d'étapes du parcours cible disposant d'un support associé.",
+          "unite": "etapes",
+          "mode_calcul": "comptage",
+          "sens_amelioration": "croitre",
+          "periodicite": "mensuelle",
+          "responsable_id": "u-contributeur",
+          "cree_par": "u-contributeur",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "mesure_indicateur",
+      "rows": [
+        {
+          "id": "a-mes-attente-1",
+          "espace_id": "a-espace",
+          "indicateur_id": "a-ind-attente",
+          "periode_debut": "2026-01-01",
+          "periode_fin": "2026-01-31",
+          "valeur": 11,
+          "source": "Comptage synthétique",
+          "auteur_id": "u-admin",
+          "niveau_confiance": "moyenne",
+          "cree_le": "2026-02-01T09:00:00+00:00"
+        },
+        {
+          "id": "a-mes-attente-2",
+          "espace_id": "a-espace",
+          "indicateur_id": "a-ind-attente",
+          "periode_debut": "2026-02-01",
+          "periode_fin": "2026-02-28",
+          "valeur": 14,
+          "source": "Comptage synthétique",
+          "auteur_id": "u-admin",
+          "niveau_confiance": "moyenne",
+          "cree_le": "2026-03-01T09:00:00+00:00"
+        }
+      ]
+    }
+  ],
+  "updates": [
+    "UPDATE parcours SET version_observee_id='a-vp-obs-1', version_cible_id='a-vp-cible-2' WHERE id='a-parc-insertion'"
+  ]
+}
