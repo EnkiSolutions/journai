@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import urllib.error
 import urllib.request
 
@@ -159,6 +160,25 @@ def evaluate(snapshot, certificate=None):
     return sha
 
 
+def certificate_parts(certificate, budget=50000):
+    """Keep large line-by-line reviews usable without truncating evidence."""
+    parts, current = [], []
+    for line in certificate.get("lines", []):
+        candidate = current + [line]
+        if len(json.dumps(candidate, ensure_ascii=False).encode()) > budget:
+            if not current:
+                raise GateError("Une justification dépasse la taille maximale d’un commentaire")
+            parts.append(current)
+            current = [line]
+            if len(json.dumps(current, ensure_ascii=False).encode()) > budget:
+                raise GateError("Une justification dépasse la taille maximale d’un commentaire")
+        else:
+            current = candidate
+    if current:
+        parts.append(current)
+    return parts
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pr", required=True, type=int)
@@ -177,9 +197,23 @@ def main():
     sha = evaluate(snapshot, certificate)
     prefix = f"/repos/{REPO}"
     if args.publish or args.merge:
-        body = "## Validation du Reviewer JournAI\n\nModèle : GPT-6.1 Sol xHigh, harness Pi.\n\n```json\n" + json.dumps(certificate, ensure_ascii=False, indent=2) + "\n```"
+        parts = certificate_parts(certificate)
+        index = {key: value for key, value in certificate.items() if key != "lines"}
+        index["line_count"] = len(certificate.get("lines", []))
+        index["line_justification_comments"] = []
+        # Validate the index size before publishing any part.
+        if len(json.dumps(index, ensure_ascii=False).encode()) > 45000:
+            raise GateError("Résumé de certificat trop volumineux")
+        for number, lines in enumerate(parts, 1):
+            part = {"head_sha": sha, "part": number, "total_parts": len(parts), "lines": lines}
+            evidence = github.request(f"{prefix}/issues/{args.pr}/comments", "POST", {
+                "body": "## Reviewer JournAI — justification des lignes\n\n```json\n" + json.dumps(part, ensure_ascii=False) + "\n```"})
+            index["line_justification_comments"].append(evidence["html_url"])
+        body = "## Validation du Reviewer JournAI\n\nModèle : GPT-6.1 Sol xHigh, harness Pi.\n\n```json\n" + json.dumps(index, ensure_ascii=False, indent=2) + "\n```"
         if len(body.encode()) > 60000:
-            raise GateError("Certificat trop volumineux pour GitHub ; scinder la PR")
+            raise GateError("Index de certificat trop volumineux")
+        if evaluate(github.snapshot(args.pr), certificate) != sha:
+            raise GateError("Le SHA a changé pendant la publication du certificat")
         comment = github.request(f"{prefix}/issues/{args.pr}/comments", "POST", {"body": body})
         github.request(f"{prefix}/statuses/{sha}", "POST", {
             "state": "success", "context": "JournAI Reviewer", "target_url": comment["html_url"],
@@ -196,6 +230,8 @@ def main():
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf8")
     try:
         main()
     except (GateError, OSError, ValueError, KeyError) as error:

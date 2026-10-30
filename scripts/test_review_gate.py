@@ -1,6 +1,6 @@
 import copy
 import unittest
-from review_gate import GateError, evaluate
+from review_gate import GateError, certificate_parts, evaluate
 
 
 class GateTests(unittest.TestCase):
@@ -59,6 +59,16 @@ class GateTests(unittest.TestCase):
         self.snapshot["checks"].append({"id": 2, "name": "CI", "status": "in_progress", "conclusion": None})
         with self.assertRaises(GateError):
             evaluate(self.snapshot)
+
+    def test_large_certificate_keeps_every_line(self):
+        lines = [{"line": i, "reason": "F01 : vérifier la cohérence de cette ligne"} for i in range(100)]
+        parts = certificate_parts({"lines": lines}, budget=200)
+        self.assertGreater(len(parts), 1)
+        self.assertEqual([line for part in parts for line in part], lines)
+
+    def test_oversized_single_reason_is_rejected(self):
+        with self.assertRaises(GateError):
+            certificate_parts({"lines": [{"reason": "x" * 1000}]}, budget=100)
 
 
 if __name__ == "__main__":
