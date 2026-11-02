@@ -11,21 +11,38 @@
 
 ## Contexte
 
-La spécification (`docs/specification.md` §7) impose six contraintes non négociables pour le socle :
+La fiche de feature (`docs/features/F01-socle.md`) fixe trois critères d’acceptation, repris
+dans leur ordre sous les étiquettes C1, C2 et C3 que ce document utilise pour les désigner.
+Aucun critère n’est ajouté au socle.
 
-| Contrainte | Ce qu’elle impose |
+| Critère réel de F01 | Ce qu’il impose au socle |
 |---|---|
-| C1 | architecture de référence, conventions de migration, conventions de configuration, contrat d’API documentés avant toute feature métier |
-| C2 | migrations versionnées, fixtures synthétiques, configuration d’exemple sans secret, commandes de démarrage |
-| C3 | la chaîne de démarrage est exécutée par la CI, sans dépendance d’un environnement développeur |
-| C4 | chaque critère est rattaché à une fonctionnalité et à un invariant de la section 3 |
-| C5 | aucune donnée réelle de bénéficiaire ; les jeux de démonstration sont séparés et nommés |
-| C6 | l’API impose le type, la valeur, la plage, l’unicité, la référence, le cycle, l’obligation conditionnelle, la version source→cible, le cloisonnement et la concurrence optimiste |
+| C1 — Documenter les choix et le contrat API dans une ADR | Architecture de référence, conventions de migration, conventions de configuration et contrat d’API écrits avant toute feature métier : c’est le présent document |
+| C2 — Fournir migrations versionnées, fixtures synthétiques, configuration exemple sans secrets et commandes de lancement | Migrations SQL journalisées, jeux de démonstration sans donnée réelle, configuration d’exemple versionnée, commandes de démarrage |
+| C3 — La CI exécute les contrôles de typage, de qualité et les tests utiles ; le parcours de démarrage est vérifié | Chaîne de démarrage et vérifications exécutées par la CI, sans dépendance d’un environnement développeur |
 
-Les règles d’architecture 3.1, 3.2 et 3.19 sont les règles d’implémentation de C6. Les
-invariants 1 à 22 sont permanents : un socle qui ne permet pas de les exprimer bloque toutes
-les features métier. Les décisions ci-dessous sont donc prises pour que ces invariants soient
-vérifiables par la base et par l’API, et non pour un confort d’écriture.
+Les règles de la spécification (`docs/specification.md`, sections « Conventions » et
+« Règles métier ») que le socle doit rendre vérifiables par la base et par l’API sont
+désignées ci-dessous par leur intitulé réel.
+
+| Intitulé réel de la règle | Section |
+|---|---|
+| « Base relationnelle ; identifiants UUID ; véritables clés étrangères et tables d’association uniques, jamais de listes d’identifiants en texte » | Conventions |
+| « Tout objet métier appartient à un espace » · « Les relations doivent rester dans le même espace » | Conventions |
+| « Les objets principaux ont un auteur, des dates de création/modification, une révision et une date d’archivage » | Conventions |
+| « Les étapes constituent un graphe avec alternatives, retours et abandons […]. Une transition reste dans une seule version. » | Règles métier |
+| « Une version validée est immuable ; une révision crée un brouillon. Les clés stables identifient étapes et occurrences entre versions. » · « Les versions courantes appartiennent au bon parcours. » | Règles métier |
+| « Le point de contact garde une identité stable ; une occurrence décrit sa présence dans une étape et un canal. » | Règles métier |
+| « L’état d’une ressource est distinct de son intégration ; une opération définie n’est pas nécessairement assurée. » | Règles métier |
+| « Une action mutualisée reste unique et peut bénéficier à plusieurs projets, contacts, opérations et ressources. » · « Les répartitions validées de charge et de budget totalisent chacune 100 %. » · « Les dépendances n’ont pas de cycle. » | Règles métier |
+| « Une seule décision est courante. » | Règles métier |
+| « Le registre objet relie les objets métier aux commentaires et événements avec intégrité du type. L’édition utilise la révision pour détecter les conflits et permettre la comparaison. » | Règles métier |
+| « Rôles : administrateur d’espace ; pilote de projet ; contributeur ; commentateur ; lecteur. » | Règles métier |
+| « Les suppressions d’objets utilisés passent par l’archivage. » | Règles métier |
+
+Ces règles sont permanentes : un socle qui ne permet pas de les exprimer bloque toutes les
+features métier. Les décisions ci-dessous sont prises pour qu’elles soient vérifiables par la
+base et par l’API, et non pour un confort d’écriture.
 
 ## Décisions
 
