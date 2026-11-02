@@ -1,13 +1,18 @@
 # ADR 0001 — Architecture de référence et contrat d’API
 
-- **État** : accepté
+- **État** : accepté (decisions du contrat). Le jalon M1 n’est ni livré ni validé : ce document
+  en est l’unité documentaire en cours.
 - **Portée** : F01 — Socle exécutable, architecture et migrations
 - **Preuves** : GitHub #1 · Multica JOUR-3 · PR #26
-- **Critères servis** : C1 (choix documentés + contrat d’API), C2 (format des fixtures,
-  conventions de migration, conventions de configuration), C3 (contrat de la chaîne de
-  démarrage et des vérifications exécutées par la CI)
-- **Statut de ce fichier** : référence liée par `journai/__init__.py`, `journai/db.py`,
-  `journai/migrations.py`, les en-têtes des migrations SQL et, depuis M2, `pyproject.toml`
+- **Critères couverts par le contrat** : C1 documenté par le présent ADR ; C2 (format des
+  fixtures, conventions de migration et de configuration) et C3 (chaîne de démarrage, checks de
+  la CI) décrits ici comme contrat, non implémentés à ce jalon
+- **Références effectives** : `journai/__init__.py` et l’en-tête de
+  `journai/migrations/0001_identite_espace_projet.sql` citent ce document. Aucune autre
+  référence n’existe dans l’arbre Git : `journai/db.py`, `journai/migrations.py` et
+  `pyproject.toml` ne le citent pas, ce dernier étant absent du dépôt.
+- **Reste à faire** : M2 (config d’exemple, migrations et fixtures exécutées, tests), M3 (CLI,
+  API, droits, validation), M4 (CI, types, démarrage vérifié)
 
 ## Contexte
 
@@ -321,24 +326,26 @@ l’ordre : `ruff check` + `ruff format --check` (qualité), `mypy` et `pyright`
 (chaîne de démarrage), `pip-audit` (dépendances, aucune dépendance d’exécution). Le flux
 `review-gate.yml` reste dédié au certificat de revue et à la validation du SHA.
 
-## État d’exécution du socle à la livraison de M1
+## État d’exécution du socle au checkpoint courant de M1
 
-Le contrat ci-dessus est plus large que le dépôt à ce jalon. Pour que la revue ligne par ligne
-sache ce qui est exécuté et ce qui est contrat :
+Le contrat ci-dessus est plus large que le dépôt. Les lignes ci-dessous décrivent l’arbre Git
+constaté par `git ls-tree -r HEAD` au checkpoint courant. La présence d’un fichier dans l’arbre
+ne vaut ni intégration, ni exécution, ni validation.
 
-| Élément du contrat | Existant aujourd’hui | Livrable |
+| Élément du contrat | Dans l’arbre Git au checkpoint | Preuve à produire (jalon) |
 |---|---|---|
-| `journai/config.py`, `db.py`, `migrations.py`, `seed.py` | présents et branchés | validés par les tests de M2 |
-| 5 migrations `0001`–`0005`, 39 tables | présentes | conformité D3/D4 prouvée par `tests/test_socle.py` (M2) |
-| `journai/fixtures/espace-a.json`, `espace-b.json` | présentes (116 lignes) | format D7 et `env` (M2) |
-| `config/journai.example.json` | absent | M2 (exigence C2) |
-| `pyproject.toml` (3.12, dépendances vides, `journai` en commande) | absent | M2 |
-| `python -m journai`, `cli.py`, `init`, `seed`, `status`, `selftest` | absents | M3 |
-| `api.py`, `auth.py`, `rights.py`, `validate.py` (D9, D10) | absents | M3 |
-| `.github/workflows/ci.yml`, `requirements-dev.txt` (D11) | absents ; seul `review-gate.yml` tourne | M4 |
+| `journai/config.py`, `db.py`, `migrations.py`, `seed.py` | présents ; import groupé, application des migrations et exécution non démontrées | chaîne importée, migrations appliquées et exécution (M2) |
+| 5 migrations `0001`–`0005`, 39 instructions `CREATE TABLE` | présentes dans l’arbre ; conformité D3/D4 non vérifiée | `tests/test_socle.py` à écrire et exécuter (M2) |
+| `journai/fixtures/espace-a.json` (1156 lignes), `espace-b.json` (284 lignes) | présentes ; format D7 et clé `env` non vérifiés | contrôle D7 et chargement des fixtures (M2) |
+| `config/journai.example.json` | absent | à créer (M2, exigence C2) |
+| `pyproject.toml` (3.12, dépendances vides, `journai` en commande) | absent | à créer (M2) |
+| `python -m journai`, `cli.py`, `init`, `seed`, `status`, `selftest` | absents | à créer (M3) |
+| `api.py`, `auth.py`, `rights.py`, `validate.py` (D9, D10) | absents | à créer (M3) |
+| `.github/workflows/ci.yml`, `requirements-dev.txt` (D11) | absents ; seul `review-gate.yml` existe dans l’arbre, son exécution n’est pas prouvée ici | à créer puis exécuter par la CI (M4, exigence C3) |
 
-`scripts/review_gate.py` et son test existent déjà (flux de livraison) et ne sont pas un livrable
-de F01.
+`scripts/review_gate.py` et `scripts/test_review_gate.py` existent dans le dépôt (flux de
+livraison commun) et ne sont pas un livrable de F01. Aucun test de M2 n’a été exécuté à ce
+checkpoint : M1 est un jalon documentaire en cours, ni livré ni validé.
 
 ## Traçabilité critère → fonctionnalité → invariant → jalon
 | Critère F01 | Décision | Fonctionnalité livrée | Invariant |
