@@ -51,23 +51,28 @@ base et par l’API, et non pour un confort d’écriture.
 
 ## Décisions
 
+D1–D11 définissent le contrat cible, pas une implémentation vérifiée. Leur formulation
+normative ne prouve ni la présence des fichiers ni l’exécution des contrôles : ces états
+sont distingués dans la section « État d’exécution du socle ». Ce checkpoint reste partiel ;
+il ne valide ni C1, ni M1, ni F01.
+
 ### D1 — Langage, dépendances, outillage
 
 - **Python 3.12**, paquets `journai` (paquet d’application) et `scripts` (outillage de
-  dérive/contrôle). **Aucune dépendance d’exécution** : `dependencies = []` dans
+  dérive/contrôle). **Choix cible : aucune dépendance d’exécution** : `dependencies = []` dans
   `pyproject.toml`. La bibliothèque standard fournit tout le socle : `sqlite3`,
   `http.server`, `json`, `argparse`, `logging`, `hashlib`, `uuid`, `datetime`,
   `importlib.resources`.
 - **Outil de développement, jamais d’exécution** : `ruff` (qualité + format), `mypy`
-  (vérification de types) et `pyright` (types + config `pyrightconfig.json`) sont déclarés dans
+  (vérification de types) et `pyright` (types + config `pyrightconfig.json`) seront déclarés dans
   `requirements-dev.txt` et dans `[project.optional-dependencies] dev`. Une CI qui « exécute les
   checks utiles » (C3) a besoin d’un vérificateur de types et d’un lanceur de tests : `unittest`
   est la bibliothèque standard, `ruff`/`mypy`/`pyright` sont les outils standards de ces checks.
   Ils ne sont jamais importés par `journai/`.
-- **Pourquoi pas de framework Web** : F01 livre une API de lecture sur `http.server`
-  (`journai/api.py`). Un framework imposerait une dépendance d’exécution contredite par C1, et
-  n’apporte au socle que du routage. Le socle a besoin de : contrat JSON stable, validation,
-  cloisonnement, concurrence optimiste. Ces points sont implémentés à la main et testés.
+- **Pourquoi pas de framework Web** : F01 prévoit une API de lecture sur `http.server`
+  (`journai/api.py`). L’absence de framework est un choix d’architecture, pas une exigence de C1.
+  Le socle prévoit un contrat JSON stable, la validation, le cloisonnement et la concurrence
+  optimiste ; leur implémentation et leurs tests restent à produire en M3.
 - **Frontend** : hors de F01 (voir *Non objectifs*). Le point d’entrée de la chaîne de démarrage
   est le CLI `python -m journai`.
 
@@ -75,10 +80,10 @@ base et par l’API, et non pour un confort d’écriture.
 
 - **Moteur** : SQLite (bibliothèque standard `sqlite3`). Pourquoi : un fichier, aucune dépendance
   d’environnement (C3), transactions complètes, clés étrangères composites (D4), contraintes
-  `CHECK` évaluées à l’écriture (C6), `PRAGMA foreign_key_check` pour auditer une base migrée.
+  `CHECK` évaluées à l’écriture (règles métier de la spécification), `PRAGMA foreign_key_check` pour auditer une base migrée.
 - **Emplacement** : `var/journai-<env>.db`, chemin fourni par la configuration (jamais codé en
   dur). `var/` est ignoré par Git. Une base de démonstration est donc toujours séparée d’une base
-  réelle, et le dépôt ne contient aucune donnée (C5).
+  réelle ; seules les fixtures synthétiques sont destinées au dépôt (C2).
 - **Journal de migration** : table `schema_migration(version, applique_le, fichier)`
   (`journai/migrations.py`). `version` est le préfixe numérique du nom de fichier ; une version
   journalisée n’est jamais rejouée (démarrage sur une base existante, idempotence de C2) ; les
@@ -94,7 +99,7 @@ base et par l’API, et non pour un confort d’écriture.
 - **Ouverture de connexion** (contractuelle, posée par `journai/db.py`) : `PRAGMA foreign_keys
   = ON`, `PRAGMA recursive_triggers = ON`, `PRAGMA journal_mode = WAL`, `foreign_keys="ON"` et
   `autocommit=False`. Sans `foreign_keys = ON`, toutes les clés étrangères du schéma sont
-  silencieusement ignorées : c’est le point d’exécution de C6 côté base.
+  silencieusement ignorées : les règles relationnelles de la spécification ne seraient pas garanties.
 
 ### D3 — Identité, dates, audit, versionnage, suppression
 
@@ -103,16 +108,16 @@ base et par l’API, et non pour un confort d’écriture.
 | Identifiant | `id TEXT NOT NULL PRIMARY KEY` | UUID canonique, comparable et stable |
 | Identifiant généré | UUID v4 (`str(uuid.uuid4())`) pour les créations, UUID fixes dans les fixtures | collision évitée sans séquence globale |
 | Dates | texte ISO-8601 **avec décalage** (`2026-01-05T09:00:00+00:00`) | comparables triées, sans ambiguïté de fuseau |
-| Traçabilité | `cree_par`, `cree_le`, `modifie_par`, `modifie_le` maintenus par le serveur | C1 (jamais le client) |
+| Traçabilité | `cree_par`, `cree_le`, `modifie_par`, `modifie_le` maintenus par le serveur | convention d’audit (jamais le client) |
 | Suppression | `archive_le` (suppression douce) ; jamais de purge | invariants d’audit et de rétablissement |
-| Concurrence | `revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1)` | C6 : version attendue obligatoire |
-| Version d’un parcours | `version_parcours(numero, perspective, statut, version_source_id)` | invariants 2 et 4 |
+| Concurrence | `revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1)` | révision attendue pour détecter les conflits |
+| Version d’un parcours | `version_parcours(numero, perspective, statut, version_source_id)` | règles de version validée immuable et de versions courantes du bon parcours |
 
 - Les identifiants métier et leurs références sont des UUID canoniques stockés en texte. Les
   fixtures utilisent des UUID synthétiques fixes pour garder leurs références reproductibles.
   La conversion des identifiants hérités des fixtures fait partie de M2.
 - `archive_le` porte la date de suppression : la purge matérielle est une décision
-  d’exploitation (anonymisation), jamais un comportement de l’API (C5).
+  d’exploitation (anonymisation), jamais un comportement de l’API (règle d’archivage des objets utilisés).
 
 ### D4 — Cloisonnement par espace, filiation par projet
 
@@ -122,12 +127,12 @@ base et par l’API, et non pour un confort d’écriture.
 - **Référence verrouillée par clé étrangère composite** : une référence entre lignes d’un même
   espace s’écrit `FOREIGN KEY (col_id, espace_id) REFERENCES table (id, espace_id)`, la table
   cible portant `UNIQUE (id, espace_id)`. Une référence vers une ligne d’un autre espace est
-  alors **impossible à écrire** (invariant 3, contrainte « cloisonnement » de C6), sans contrôle
+  alors **impossible à écrire** (règle « Les relations doivent rester dans le même espace »), sans contrôle
   applicatif et sans jointure de contrôle.
 - **Filiation** : `projet_structure`, `parcours_public`, `action_projet`, `action_occurrence`,
   `action_operation`, `action_ressource`, `action_constat` sont des tables d’association avec la
   même discipline composite. Un parcours, une action, une ressource, un contact ne sont jamais
-  rattachés par un texte libre : la spécification 3.4 est une clé étrangère, pas une convention.
+  rattachés par un texte libre : la convention relationnelle de la spécification impose des clés étrangères, pas du texte libre.
 - **Sous-arborescence dans le même espace** : `public.parent_id` se référence lui-même par
   `(parent_id, espace_id)` et `CHECK (parent_id IS NULL OR parent_id <> id)` interdit la boucle
   immédiate.
@@ -149,7 +154,7 @@ base et par l’API, et non pour un confort d’écriture.
 - **Identité stable d’un point de contact** : `point_contact(nom, intention, responsable_id)` est
   une identité, jamais un calcul. Les occurrences de contact portent la dépendance d’exécution
   (`occurrence_contact(etape_id, point_contact_id, canal_id, criticite, statut, quantite)`) et
-  sont ce que la planification et l’exécution consomment (invariant 14).
+  sont ce que la planification et l’exécution consomment (règle d’identité stable du contact et d’occurrence par étape et canal).
 - **Opérations et ressources d’un contact** : F08 et F09 réutilisent les définitions
   d’opération et de ressource. Les associations `occurrence_operation` et
   `occurrence_ressource` les relient à une occurrence de contact dans le même espace.
@@ -158,14 +163,14 @@ base et par l’API, et non pour un confort d’écriture.
 - **État d’une ressource vs état d’utilisation** : `ressource.etat` (état de l’objet de
   référence) et `occurrence_ressource.etat_utilisation` (dégradé, indisponible, remplace, libere,
   bloque, inchange) sont deux colonnes distinctes. Modifier l’un ne réécrit pas l’autre
-  (invariant 15).
+  (règle de distinction entre état de ressource et intégration).
 - **Action = une ligne + des associations** : `action` porte le périmètre, la finalité, le
   statut, la criticité, le porteur, le responsable, le budget, la charge, le planning. Les
   rattachements à plusieurs projets, étapes, opérations, ressources, constats, arbitrages, et les
   contributions d’autres porteurs sont des tables dédiées (`action_projet`, `action_occurrence`,
   `action_operation`, `action_ressource`, `action_constat`, `dependance_action`,
   `contribution_action`). Une action n’est jamais recopiée par projet, porteur ou arbitrage
-  (invariants 7, 8, 11).
+  (règle d’unicité de l’action mutualisée).
 - **Droits par espace et projet** : le rôle administrateur porte sur l’administration de
   l’espace. L’appartenance à une structure ou à un espace ne confère aucun droit automatique
   sur ses projets. L’habilitation projet est explicite dans `membre_projet` ; elle détermine les
@@ -179,8 +184,8 @@ base et par l’API, et non pour un confort d’écriture.
 
 - **Une seule source de lecture : `config/journai.example.json`** (exempt de secret, versionnée),
   chargée par `journai/config.py`. Limite connue, traitée en M2 : ce fichier n’existe pas encore
-  alors que `config.py` le charge déjà ; la configuration tourne aujourd’hui sur les seuls défauts
-  du code, alors que C2 exige l’exemple versionné. Une copie locale `config/journai.json` l’écrase,
+  alors que `config.py` le charge déjà ; le chargement et les valeurs par défaut
+  restent à vérifier en M2 ; C2 exige l’exemple versionné. Une copie locale `config/journai.json` l’écrase,
   et une variable d’environnement écrase la copie locale : priorité
   `variable d’environnement > config/journai.json > config/journai.example.json > défaut`.
 - **Variables d’environnement, préfixe `JOURNAI_`** : `JOURNAI_ENV`, `JOURNAI_DB`,
@@ -228,7 +233,7 @@ requêtes**. Format canonique :
   graine insérée est complète, ou n’est pas insérée.
 - **Aucune donnée réelle** : UUID synthétiques fixes et distincts par jeu, noms et courriels en
   `.test`, valeurs numériques plausibles. Un contrôle de non-référence est possible hors ligne,
-  il ne fait pas partie de la CI (C5).
+  sa vérification reste à produire au titre des fixtures synthétiques (C2).
 
 ### D8 — Chaîne de démarrage et CLI
 
@@ -242,8 +247,7 @@ requêtes**. Format canonique :
   format horodaté. Une commande qui échoue rend un code de sortie non nul et un message
   explicatif sur la sortie d’erreur : la CI et le développeur voient la même raison.
 - **`selftest`** : migrations + graines + lecture API sur une base temporaire, hors du dépôt. La
-  CI l’exécute, ce qui remplace C3 « la chaîne de démarrage est exécutée par la CI » par une
-  commande unique et vérifiable.
+  CI devra l’exécuter en M4 pour prouver C3 ; ce contrat ne modifie pas le critère réel.
 
 ### D9 — Contrat d’API de lecture (F01)
 
@@ -275,8 +279,8 @@ requêtes**. Format canonique :
   Le partage d’une action autorise seulement son contenu commun et ses échanges dans le
   projet habilité. Le contrôle des droits n’est pas délégué au client.
 - **Concurrence optimiste exposée** : le détail rend `ETag: "<id>@<revision>"`. `If-Match`
-  est exigé pour la mise à jour (F02) et contrôlé contre `revision` : une écriture sur une
-  révision dépassée rend `409`, jamais un écrasement (C6, invariants 4 et 19).
+  sera exigé pour les écritures des features métier et contrôlé contre `revision` : une écriture sur une
+  révision dépassée devra rendre `409`, jamais un écrasement (règle de détection des conflits par la révision).
 - **Codes d’état** :
 
   | Code | Cas |
@@ -292,36 +296,36 @@ requêtes**. Format canonique :
 
 - **Enveloppe d’erreur** : `{ "error": { "code": "acces_refuse", "message": "…",
   "champs": ["espace_id"] } }`. Les messages sont lisible par une personne bénéficiaire :
-  une raison, pas un texte technique (3.18).
+  une raison, pas un texte technique (exigence de lisibilité du contrat d’API).
 - **Corps refusé à la lecture** : une méthode autre que `GET`/`HEAD`/`OPTIONS` sur F01 rend
-  `405` : l’API d’écriture est F02, et le socle n’accepte pas d’écriture non validée.
+  `405` : les écritures relèvent des features métier concernées, et le socle n’accepte pas d’écriture non validée.
 
 ### D10 — Règles de validation applicative
 
 La validation SQLite (`CHECK`, clés étrangères, `UNIQUE`) ne couvre que les règles exprimables en
-DDL. Le reste est validé dans `journai/validate.py`, appliqué par l’API, dans le même ordre :
+DDL. Le reste devra être validé dans `journai/validate.py`, à créer en M3 et à appeler par l’API dans l’ordre :
 type → plage → référence → cycle → obligation conditionnelle → cloisonnement → concurrence.
 
-| Règle de C6 | Où elle est vérifiée |
+| Règle du contrat | Contrôle à implémenter et à vérifier en M2/M3 |
 |---|---|
 | type | `CHECK` sur les colonnes énumérées ; `validate.py` pour les types non contraints (date, montant, entier borné) |
 | valeur, plage | `CHECK` (montants `>= 0`, `quantite > 0`, pourcentages `0..100`, `notation 0..5`) ; `validate.py` sur les bornes non contraintes |
 | unicité | contrainte `UNIQUE` (courriel, `(code, pays)`, `(id, espace_id)`, `(version_parcours_id, cle_stable)`, `(espace_id, code)`, `(abonnement_id, objet_id, objet_type)`) |
 | référence | clé étrangère + `PRAGMA foreign_key_check` ; `validate.py` contrôle la cible **archivée** (référence à une ligne `archive_le` est refusée en écriture) |
 | cycle | chaîne `version_source_id` du même parcours contrôlée par `validate.py` (aucune boucle, source validée) |
-| obligation conditionnelle | `validate.py` : une écriture exige le porteur, le responsable, le périmètre et les liens de rattachement ; un élément du plan d’action (F13) exige `action_projet`, `action_occurrence` et le porteur |
+| obligation conditionnelle | `validate.py` : contrôles conditionnels définis par les features métier ; F11/F12 portent les champs et rattachements des actions, F13 les dépendances et F18 la vue Plan d’action |
 | versions et transitions | Contrôles futurs D4 : refuser l’édition d’une version validée, les sources et versions courantes d’un autre parcours, et les transitions entre versions ; vérifier la création d’un brouillon et la conservation des clés stables |
 | cloisonnement | clé étrangère composite D4 + dépôt d’accès D9 |
 | concurrence optimiste | colonne `revision` + `If-Match` D9 |
 
 Les règles de type, plage, unicité, référence, cycle, obligation, version, cloisonnement et
-concurrence sont **déclarées dans le schéma** (D3 à D5) et **nommées dans `validate.py`** :
-un contrôle absent est visible dans ce tableau, et le certificateur de revue (`scripts/review_gate.py`)
-ne valide un diff que si chaque colonne/migration ajoutée est rattachée à un critère.
+concurrence constituent le contrat cible (D3 à D5), sans preuve d’exécution à M1 :
+les contrôles restent à exécuter en M2/M3. Le certificateur de revue (`scripts/review_gate.py`)
+vérifie un certificat lié au SHA ; il ne prouve pas l’implémentation de ces règles.
 
-### D11 — Checks exécutés par la CI
+### D11 — Checks prévus pour la CI
 
-Le flux `CI` (`.github/workflows/ci.yml`, déclenché sur toute PR et sur `main`) exécute, dans
+Le flux `CI` (`.github/workflows/ci.yml`, déclenché sur toute PR et sur `main`) devra exécuter en M4, dans
 l’ordre : `ruff check` + `ruff format --check` (qualité), `mypy` et `pyright` (types),
 `unittest discover` sur les tests du paquet **et** de `scripts/` (tests), `journai selftest`
 (chaîne de démarrage), `pip-audit` (dépendances, aucune dépendance d’exécution). Le flux
@@ -388,24 +392,25 @@ désigne la revue de la PR complète après M4, jamais le checkpoint d’un jalo
 
 ## Non objectifs de F01
 
-Le socle fournit les tables, les règles et la lecture. Sont volontairement hors de F01 : les
-enregistrements d’écriture (F02), les listes et enregistrements (F03, F04, F05), les calculs de
-charge/coût (F06), toute interface graphique, tout rendu PDF, tout envoi de courriel, toute
-intégration de service payant, et l’import de données réelles. Les tables de ces features existent
-dans le schéma pour que les règles de C6 s’exercent dès le socle ; les comportements métier
-arrivent avec leur feature.
+Le contrat F01 prévoit les tables, les règles et la lecture. Les écritures et comportements
+métier restent à livrer par leurs features : identité et adhésions (F02), structures et projets
+(F03), publics (F04), versions de parcours (F05), étapes et transitions (F06), estimations de
+charge et de coût (F14). Sont également hors de F01 : toute interface graphique, tout rendu PDF,
+tout envoi de courriel, toute intégration de service payant et l’import de données réelles.
+La présence de migrations ne prouve ni leur conformité aux règles ni leur exécution.
 
 ## Conséquences
 
 **Positif**
 
-- Les neuf règles de C6 sont exerçables par la base, donc par toute feature future, sans
-  redévelopper un contrôle dans chaque écran.
-- Le cloisonnement n’est pas une convention d’équipe : une référence entre deux espaces ne peut
-  pas s’écrire.
-- La chaîne de démarrage tient en une commande, exécutée telle quelle par la CI : un
+- Le contrat répartit les contrôles entre base et API (D10) ; leurs preuves restent à
+  produire en M2/M3 avant de les considérer comme disponibles pour les features métier.
+- Le cloisonnement devra être garanti par les clés étrangères composites et par le périmètre
+  d’accès de l’API ; les tests de M2/M3 devront en démontrer le rejet hors espace.
+- La chaîne de démarrage est prévue en une commande, à vérifier par la CI en M4 : un
 développeur qui réussit `python -m journai selftest` a la même base que la CI.
-- Zéro dépendance d’exécution : aucune surface d’approvisionnement, aucun secret de service.
+- L’absence de dépendance d’exécution est un choix cible ; elle ne dispense pas de
+  contrôler l’approvisionnement des outils ni les secrets de configuration.
 
 **Coût et limites assumées**
 
