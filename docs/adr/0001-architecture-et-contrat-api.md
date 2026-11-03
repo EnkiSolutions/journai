@@ -153,7 +153,7 @@ il ne valide ni C1, ni M1, ni F01.
 
 - **Identité stable d’un point de contact** : `point_contact(nom, intention, responsable_id)` est
   une identité, jamais un calcul. Les occurrences de contact portent la dépendance d’exécution
-  (`occurrence_contact(etape_id, point_contact_id, canal_id, criticite, statut, quantite)`) et
+  (`occurrence_contact(etape_id, point_contact_id, canal_id, criticite, frequence, volume_estime, etat_operationnel)`) et
   sont ce que la planification et l’exécution consomment (règle d’identité stable du contact et d’occurrence par étape et canal).
 - **Opérations et ressources d’un contact** : F08 et F09 réutilisent les définitions
   d’opération et de ressource. Les associations `occurrence_operation` et
@@ -164,13 +164,17 @@ il ne valide ni C1, ni M1, ni F01.
   référence) et `occurrence_ressource.etat_utilisation` (dégradé, indisponible, remplace, libere,
   bloque, inchange) sont deux colonnes distinctes. Modifier l’un ne réécrit pas l’autre
   (règle de distinction entre état de ressource et intégration).
-- **Action = une ligne + des associations** : `action` porte le périmètre, la finalité, le
-  statut, la criticité, le porteur, le responsable, le budget, la charge, le planning. Les
-  rattachements à plusieurs projets, étapes, opérations, ressources, constats, arbitrages, et les
-  contributions d’autres porteurs sont des tables dédiées (`action_projet`, `action_occurrence`,
-  `action_operation`, `action_ressource`, `action_constat`, `dependance_action`,
-  `contribution_action`). Une action n’est jamais recopiée par projet, porteur ou arbitrage
-  (règle d’unicité de l’action mutualisée).
+- **Action et associations** : `action` porte le titre, la nature, le statut, le responsable,
+  les dates, la contrainte impérative et le critère d’acceptation. Les sous-actions se rattachent
+  par `action_parent_id`. Les dépendances et contributions passent par leurs tables dédiées.
+  Les projets, occurrences de contact, opérations, ressources et constats sont reliés par
+  `action_projet`, `action_occurrence`, `action_operation`, `action_ressource` et `action_constat`.
+  L’action reste unique et sa charge est comptée une fois au portefeuille. Les estimations
+  séparent charge, coût et complexité. Les évaluations historisent importance et impact
+  sans effacer les désaccords. La criticité appartient à l’occurrence de contact.
+- **Opération définie et occurrence assurée** : la définition réutilisable (F08) est distincte
+  de la preuve d’exécution dans une occurrence. Une association seule ne prouve pas qu’une
+  opération a été assurée. Les tests futurs devront distinguer les deux cas.
 - **Droits par espace et projet** : le rôle administrateur porte sur l’administration de
   l’espace. L’appartenance à une structure ou à un espace ne confère aucun droit automatique
   sur ses projets. L’habilitation projet est explicite dans `membre_projet` ; elle détermine les
@@ -229,8 +233,7 @@ requêtes**. Format canonique :
 - `env` : environnement autorisé (`dev`, `test`). Un fixture `dev` est refusé sur `prod`, qui ne
   reçoit donc jamais de fixture.
 - **Refus d’écrasement** : `journai/seed.py` refuse d’insérer dans une table déjà renseignée
-  sans remplacement explicite (`--replace`). Une graine insérée est complète, ou n’est pas
-  graine insérée est complète, ou n’est pas insérée.
+  sans remplacement explicite (`--replace`). Le semis est atomique : il est appliqué intégralement ou annulé.
 - **Aucune donnée réelle** : UUID synthétiques fixes et distincts par jeu, noms et courriels en
   `.test`, valeurs numériques plausibles. Un contrôle de non-référence est possible hors ligne,
   sa vérification reste à produire au titre des fixtures synthétiques (C2).
@@ -361,12 +364,15 @@ checkpoint : M1 est un jalon documentaire en cours, ni livré ni validé.
 | C1 | D3, D4, D10 | Versions de parcours, étapes en graphe et transitions au sein d’une même version | F05 (versions), F06 (étapes et transitions) | Tests : refuser la modification directe d’une version validée, vérifier qu’une révision crée un brouillon lié à sa source, préserver les clés stables et refuser une version courante d’un autre parcours ou une transition entre versions | M2 (intégrité), M3 (comportement API) |
 | C1 | D5 | « Le point de contact garde une identité stable ; une occurrence décrit sa présence dans une étape et un canal. » | F07 (contacts, canaux, occurrences) | Base : unicité (étape, point de contact, canal) ; API : exposition de l’occurrence | M2 (base), M3 (API) |
 | C1 | D4, D5 | Opérations et ressources réutilisées par occurrence de contact | F08, F09 | Contrôles futurs : réutilisation dans plusieurs occurrences et refus d’une association hors espace | M2 (intégrité), M3 (API) |
-| C1 | D5 | « L’état d’une ressource est distinct de son intégration ; une opération définie n’est pas nécessairement assurée. » | F08 (opérations), F09 (ressources et intégration) | Base : colonnes d’état distinctes de l’intégration ; API : lecture des deux états | M2 (base), M3 (API) |
+| C1 | D5 | « L’état d’une ressource est distinct de son intégration ; une opération définie n’est pas nécessairement assurée. » | F08 (opérations), F09 (ressources et intégration) | Base : colonnes d’état distinctes de l’intégration ; tests futurs : une opération définie et liée peut rester non assurée | M2 (base), M3 (API) |
 | C1 | D5, D10 | « Une action mutualisée reste unique et peut bénéficier à plusieurs projets, contacts, opérations et ressources. » · « Les répartitions validées de charge et de budget totalisent chacune 100 %. » | F11 (actions et contributeurs), F12 (mutualisation et répartitions), F14 (estimations de charge et coût) | Base : action unique et tables de répartition ; API : refus d’une répartition dont le total n’est pas 100 % | M2 (base), M3 (validation) |
 | C1 | D5, D10 | Une action ne peut devenir son propre ancêtre et ses dépendances restent sans cycle | F11 (actions et sous-actions), F13 (dépendances) | Tests distincts : refuser un cycle de filiation parent/enfant (F11) et un cycle dans le graphe de dépendances (F13), y compris indirects | M3 (validation applicative) |
-| C1 | D5, D10 | « Une seule décision est courante. » | F16 (décisions de priorité historisées) | Base : index partiel d’unicité ; API : décision courante unique | M2 (base), M3 (API) |
+| C1 | D5, D10 | La priorité appartient au couple action–projet. Chaque décision conserve auteur, motif, estimation de la même action et évaluation du même couple. Une seule décision est courante. | F14, F15, F16 | Contrôles futurs : refuser les références incohérentes, vérifier unicité, historique et explicabilité du classement | M2/M3, comportement F16 |
 | C1 | D5, D9 | Habilitation explicite par projet, cloisonnement d’espace et partage limité au contenu commun d’une action et à ses échanges | F02, F03, F12, F24 | Tests futurs : refuser un projet sans habilitation, isoler listes/détails/inclusions, autoriser le contenu partagé sans exposer les autres données des projets | M3 (API et droits), contrôle complet en F24 |
 | C1 | D9 | « Le registre objet relie les objets métier aux commentaires et événements avec intégrité du type. L’édition utilise la révision pour détecter les conflits et permettre la comparaison. » | F21 (commentaires, abonnements, notifications), F22 (registre objet) | API : lecture du registre avec intégrité de type, comparaison à partir de la révision | M3 (API) |
+| C1 | D4, D10 | Structure pilote et structures associées ; segments imbriqués et publics multiples par parcours. | F03, F04 | Contrôles futurs : rôles et rattachements explicites, refus des cycles et liens hors espace | M2/M3 et F03/F04 |
+| C1 | D5, D10 | Constats : source, date, confiance et distinction hypothèse/fait validé. Estimations et évaluations : dimensions séparées, échelles explicites et historique des avis. | F10, F14, F15 | Contrôles futurs : conserver champs de preuve, révisions et divergences sans moyenne implicite | M2/M3 et F10/F14/F15 |
+| C1 | D3, D9 | Historiser les changements significatifs et les décisions. Relier les indicateurs à un projet ou à une occurrence ; conserver période, source et confiance des mesures. Distinguer livraison et validation de l’effet. | F16, F22, F23 | Contrôles futurs : relire l’historique, filtrer les mesures et vérifier la validation indépendante de la livraison | M2/M3 et F16/F22/F23 |
 | C2 | D2, D3, D6, D7, D8 | Migrations versionnées, fixtures synthétiques, configuration d’exemple sans secrets et commandes de lancement | F01 (socle) ; F02 et F03 (bénéficiaires) | Appliquer les migrations et charger les fixtures (M2), puis exécuter les commandes de lancement D8 (M3) | M2 et M3 |
 | C3 | D1, D8, D11 | « La CI exécute les contrôles de typage, de qualité et les tests utiles ; le parcours de démarrage est vérifié » | F01 (CI) ; autres features bénéficiaires | CI : typage, qualité, tests et selftest | M4 : job ci.yml exécuté et journal conservé |
 
