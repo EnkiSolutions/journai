@@ -206,8 +206,8 @@ il ne valide ni C1, ni M1, ni F01.
   Le secret de démonstration est fourni uniquement par `JOURNAI_JETON_DEV`, sans clé JSON.
   Un environnement inconnu est refusé (`env` ∈ `dev`, `test`, `staging`, `prod`) : la CI et le
   CLI ne peuvent pas démarrer sur une valeur typographique.
-- **Secrets** : `.env*` est ignoré par Git (`​.gitignore`), seule `.env.example` est versionnée et
-  ne contient que des noms de variables. Le jeton de démonstration est fourni par
+- **Secrets** : `.env*` est ignoré par Git (`​.gitignore`), `.env.example` est prévue pour M2 et
+  ne devra contenir que des noms de variables. Le jeton de démonstration est fourni par
   `JOURNAI_JETON_DEV` (jamais par un fichier versionné) et n’est accepté que lorsque `env` est
   `dev` ou `test`.
 
@@ -327,8 +327,8 @@ type → plage → référence → cycle → obligation conditionnelle → clois
 | Règle du contrat | Contrôle à implémenter et à vérifier en M2/M3 |
 |---|---|
 | type | `CHECK` sur les colonnes énumérées ; `validate.py` pour les types non contraints (date, montant, entier borné) |
-| valeur, plage | `CHECK` (montants `>= 0`, `quantite > 0`, pourcentages `0..100`, `notation 0..5`) ; `validate.py` sur les bornes non contraintes |
-| unicité | contrainte `UNIQUE` (courriel, `(code, pays)`, `(id, espace_id)`, `(version_parcours_id, cle_stable)`, `(espace_id, code)`, `(abonnement_id, objet_id, objet_type)`) |
+| valeur, plage | Contrôles futurs sur les colonnes du modèle : charge et coût non négatifs dans estimation_action, pourcentages de répartition entre 0 et 100 et total validé à 100 % par action |
+| unicité | Contrôles futurs : une adhésion par couple espace–utilisateur, un membre par couple projet–utilisateur et une clé stable par version. Les clés techniques composites (id, espace_id) servent à vérifier le cloisonnement D4 |
 | référence | clé étrangère + `PRAGMA foreign_key_check` ; `validate.py` contrôle la cible **archivée** (référence à une ligne `archive_le` est refusée en écriture) |
 | cycle | chaîne `version_source_id` du même parcours contrôlée par `validate.py` (aucune boucle, source validée) |
 | obligation conditionnelle | `validate.py` : contrôles conditionnels définis par les features métier ; F11/F12 portent les champs et rattachements des actions, F13 les dépendances et F18 la vue Plan d’action |
@@ -360,6 +360,7 @@ ne vaut ni intégration, ni exécution, ni validation.
 | `journai/config.py`, `db.py`, `migrations.py`, `seed.py` | présents ; import groupé, application des migrations et exécution non démontrées | chaîne importée, migrations appliquées et exécution (M2) |
 | 5 migrations `0001`–`0005`, 39 instructions `CREATE TABLE` | présentes dans l’arbre ; conformité D3/D4 non vérifiée | `tests/test_socle.py` à écrire et exécuter (M2) |
 | `journai/fixtures/espace-a.json` (1156 lignes), `espace-b.json` (284 lignes) | présentes ; format D7 et clé `env` non vérifiés | contrôle D7 et chargement des fixtures (M2) |
+| `.gitignore`, `.env.example` | `.gitignore` présent ; `.env.example` absente | fournir un exemple sans valeur de secret et vérifier les règles Git (M2) |
 | `config/journai.example.json` | absent | à créer (M2, exigence C2) |
 | `pyproject.toml` (3.12, dépendances vides, `journai` en commande) | absent | à créer (M2) |
 | `python -m journai`, `cli.py`, `init`, `seed`, `status`, `selftest` | absents | à créer (M3) |
