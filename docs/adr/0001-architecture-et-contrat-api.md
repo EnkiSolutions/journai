@@ -135,15 +135,14 @@ base et par l’API, et non pour un confort d’écriture.
   vers `version_parcours`, qui pointe vers `parcours`. SQLite l’accepte ; la validité est
   contrôlée par `PRAGMA foreign_key_check` à la fin du lot de migration, jamais à la création de
   la table. L’ordre d’insertion des fixtures suit le même principe (D7).
-- **Version source→cible** : `version_parcours.version_source_id` référence une version validée
-  du **même** parcours (`(version_source_id, parcours_id)`), avec
-  `CHECK (version_source_id IS NULL OR version_source_id <> id)` et
-  `CHECK (valide_le IS NOT NULL OR statut = 'brouillon')`. Un parcours cible est donc
-  rattaché à sa source dès la base (invariant 2, C6 « version source→cible »).
-- **Étapes attachées à une version, pas au parcours** : `etape` référence
-  `(version_parcours_id, espace_id)` et porte `cle_stable` (`UNIQUE (version_parcours_id,
-  cle_stable)`). La comparaison de deux versions (F11) et la stabilité lors d’une nouvelle version
-  (F10, F13) reposent sur cette clé, pas sur l’ordre d’affichage.
+- **Versions (F05)** : une version validée est immuable. Une révision crée un brouillon lié
+  à sa version source du même parcours, sans déplacer les références historiques. Les versions
+  courantes observée et cible doivent appartenir au parcours et à la perspective correspondante.
+  Les contrôles de M2/M3 devront rejeter une source ou une version courante incohérente.
+- **Graphe d’une version (F06)** : chaque étape appartient à une version et porte une clé
+  stable conservée entre versions. Les transitions relient deux étapes de la même version
+  et du même espace. Le graphe représente alternatives, retours et abandons indépendamment
+  de l’ordre d’affichage. Les contrôles de M2/M3 devront refuser les liens inter-version.
 
 ### D5 — Contacts, occurrences, actions, droits
 
@@ -151,12 +150,11 @@ base et par l’API, et non pour un confort d’écriture.
   une identité, jamais un calcul. Les occurrences de contact portent la dépendance d’exécution
   (`occurrence_contact(etape_id, point_contact_id, canal_id, criticite, statut, quantite)`) et
   sont ce que la planification et l’exécution consomment (invariant 14).
-- **Opérations, ressources, occurrences** : `operation(mode, charge, cout)`,
-  `ressource(type, role, competences, etat, capacite)`,
-  `occurrence_operation(etape_id, operation_id, role, quantite, duree)`,
-  `occurrence_ressource(etape_id, ressource_id, role, quantite, etat_utilisation)`. Une
-  opération/ressource est une définition ; son occurrence dans une étape est l’objet planifié.
-  Le cloisonnement de l’occurrence est celui de l’étape, et l’occurrence est l’unité suivie.
+- **Opérations et ressources d’un contact** : F08 et F09 réutilisent les définitions
+  d’opération et de ressource. Les associations `occurrence_operation` et
+  `occurrence_ressource` les relient à une occurrence de contact dans le même espace.
+  Le rôle, l’usage et l’état d’utilisation sont portés par l’association. Les contrôles
+  futurs devront prouver la réutilisation et rejeter les références hors espace.
 - **État d’une ressource vs état d’utilisation** : `ressource.etat` (état de l’objet de
   référence) et `occurrence_ressource.etat_utilisation` (dégradé, indisponible, remplace, libere,
   bloque, inchange) sont deux colonnes distinctes. Modifier l’un ne réécrit pas l’autre
@@ -309,7 +307,7 @@ type → plage → référence → cycle → obligation conditionnelle → clois
 | référence | clé étrangère + `PRAGMA foreign_key_check` ; `validate.py` contrôle la cible **archivée** (référence à une ligne `archive_le` est refusée en écriture) |
 | cycle | chaîne `version_source_id` du même parcours contrôlée par `validate.py` (aucune boucle, source validée) |
 | obligation conditionnelle | `validate.py` : une écriture exige le porteur, le responsable, le périmètre et les liens de rattachement ; un élément du plan d’action (F13) exige `action_projet`, `action_occurrence` et le porteur |
-| version source→cible | clé étrangère composite D4 + contrôle `validate.py` |
+| versions et transitions | Contrôles futurs D4 : refuser l’édition d’une version validée, les sources et versions courantes d’un autre parcours, et les transitions entre versions ; vérifier la création d’un brouillon et la conservation des clés stables |
 | cloisonnement | clé étrangère composite D4 + dépôt d’accès D9 |
 | concurrence optimiste | colonne `revision` + `If-Match` D9 |
 
@@ -353,8 +351,9 @@ checkpoint : M1 est un jalon documentaire en cours, ni livré ni validé.
 | C1 | D2, D3 | « Base relationnelle ; identifiants UUID ; véritables clés étrangères et tables d’association uniques, jamais de listes d’identifiants en texte » | F01 (migrations du socle), première base consommée par F02 | Tests : vérifier le format UUID des identifiants métier, le rejet des identifiants invalides, les clés étrangères et l’unicité des associations | M2 (base), M3 (validation API) |
 | C1 | D4 | « Tout objet métier appartient à un espace » · « Les relations doivent rester dans le même espace » | F02 (identité, espaces, adhésions), F24 (droits par espace et projet) | Base : clés composées sur `espace_id` ; API : filtrage d’espace et refus inter-espaces | M2 (base), M3 (API) |
 | C1 | D3 | « Les objets principaux ont un auteur, des dates de création/modification, une révision et une date d’archivage » · « Les suppressions d’objets utilisés passent par l’archivage » | F22 (registre objet, conflits, historique, archivage) | Base : colonnes d’audit et `archive_le` sans purge ; API : `If-Match` sur la révision | M2 (base), M3 (API) |
-| C1 | D3, D5, D10 | Versions de parcours, étapes en graphe et transitions au sein d’une même version | F05 (versions), F06 (étapes et transitions) | Tests : refuser la modification directe d’une version validée, vérifier qu’une révision crée un brouillon lié à sa source, préserver les clés stables et refuser une version courante d’un autre parcours ou une transition entre versions | M2 (intégrité), M3 (comportement API) |
+| C1 | D3, D4, D10 | Versions de parcours, étapes en graphe et transitions au sein d’une même version | F05 (versions), F06 (étapes et transitions) | Tests : refuser la modification directe d’une version validée, vérifier qu’une révision crée un brouillon lié à sa source, préserver les clés stables et refuser une version courante d’un autre parcours ou une transition entre versions | M2 (intégrité), M3 (comportement API) |
 | C1 | D5 | « Le point de contact garde une identité stable ; une occurrence décrit sa présence dans une étape et un canal. » | F07 (contacts, canaux, occurrences) | Base : unicité (étape, point de contact, canal) ; API : exposition de l’occurrence | M2 (base), M3 (API) |
+| C1 | D4, D5 | Opérations et ressources réutilisées par occurrence de contact | F08, F09 | Contrôles futurs : réutilisation dans plusieurs occurrences et refus d’une association hors espace | M2 (intégrité), M3 (API) |
 | C1 | D5 | « L’état d’une ressource est distinct de son intégration ; une opération définie n’est pas nécessairement assurée. » | F08 (opérations), F09 (ressources et intégration) | Base : colonnes d’état distinctes de l’intégration ; API : lecture des deux états | M2 (base), M3 (API) |
 | C1 | D5, D10 | « Une action mutualisée reste unique et peut bénéficier à plusieurs projets, contacts, opérations et ressources. » · « Les répartitions validées de charge et de budget totalisent chacune 100 %. » | F11 (actions et contributeurs), F12 (mutualisation et répartitions), F14 (estimations de charge et coût) | Base : action unique et tables de répartition ; API : refus d’une répartition dont le total n’est pas 100 % | M2 (base), M3 (validation) |
 | C1 | D5, D10 | Une action ne peut devenir son propre ancêtre et ses dépendances restent sans cycle | F11 (actions et sous-actions), F13 (dépendances) | Tests distincts : refuser un cycle de filiation parent/enfant (F11) et un cycle dans le graphe de dépendances (F13), y compris indirects | M3 (validation applicative) |
