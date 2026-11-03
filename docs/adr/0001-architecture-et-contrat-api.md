@@ -361,8 +361,8 @@ checkpoint : M1 est un jalon documentaire en cours, ni livré ni validé.
 | C1 | D5, D10 | « Une seule décision est courante. » | F16 (décisions de priorité historisées) | Base : index partiel d’unicité ; API : décision courante unique | M2 (base), M3 (API) |
 | C1 | D5, D10 | « Rôles : administrateur d’espace ; pilote de projet ; contributeur ; commentateur ; lecteur. » · « Une action partagée expose son contenu commun et ses échanges aux membres autorisés des projets concernés, sans ouvrir les autres données de ces projets. » | F24 (droits par espace et projet, partage limité) | API : matrice rôle × droit, partage limité au contenu commun | M3 (API, droits) |
 | C1 | D9 | « Le registre objet relie les objets métier aux commentaires et événements avec intégrité du type. L’édition utilise la révision pour détecter les conflits et permettre la comparaison. » | F21 (commentaires, abonnements, notifications), F22 (registre objet) | API : lecture du registre avec intégrité de type, comparaison à partir de la révision | M3 (API) |
-| C2 | D2, D3, D6, D7 | Fixtures de démonstration sans donnée réelle et configuration d’exemple sans secrets (convention de `AGENTS.md`) | F02, F03 (premières features à charger des données de démonstration) | Migrations appliquées, fixtures chargées, configuration d’exemple sans secret | M2 : exécution des migrations et des fixtures |
-| C3 | D1, D8, D11 | « La CI exécute les contrôles de typage, de qualité et les tests utiles ; le parcours de démarrage est vérifié » | Toutes les features (bénéficiaires du contrôle) | CI : typage, qualité, tests, `selftest` sur la chaîne de démarrage | M4 : job `ci.yml` exécuté |
+| C2 | D2, D3, D6, D7, D8 | Migrations versionnées, fixtures synthétiques, configuration d’exemple sans secrets et commandes de lancement | F01 (socle) ; F02 et F03 (bénéficiaires) | Appliquer les migrations et charger les fixtures (M2), puis exécuter les commandes de lancement D8 (M3) | M2 et M3 |
+| C3 | D1, D8, D11 | « La CI exécute les contrôles de typage, de qualité et les tests utiles ; le parcours de démarrage est vérifié » | F01 (CI) ; autres features bénéficiaires | CI : typage, qualité, tests et selftest | M4 : job ci.yml exécuté et journal conservé |
 
 La colonne « Contrôle attendu » liste des preuves à produire, pas des preuves obtenues : aux
 jalons M2 à M4, ces contrôles restent à exécuter, comme l’indique la section « État d’exécution
@@ -376,7 +376,7 @@ règle identifiable de la spécification, à la décision qui l’exprime, à la
 | M2 | fichiers à créer, puis exécuter | `config/journai.example.json`, migrations `0001`–`0005`, fixtures `espace-a`/`espace-b`, `pyproject.toml`, `tests/test_socle.py` | migrations appliquées et fixtures chargées par une exécution réelle des tests |
 | M3 | exécution à prouver | chaîne de démarrage et CLI (D8), API de lecture (D9), droits et validation (D10) | appels CLI et API exécutés, droits et validations vérifiés par les tests |
 | M4 | exécution à prouver | CI, typage, qualité, tests, démarrage vérifié (D11) | job `ci.yml` exécuté et son journal |
-| M5 | revue de livraison | PR #26 complète après M4 | certificat de revue justifiant chaque ligne, validé par `scripts/review_gate.py` |
+| M5 | revue de livraison | Après M4, sortir la PR complète du brouillon puis soumettre son dernier SHA à CodeRabbit | Approbation CodeRabbit sans remarque ouverte ni erreur sur ce SHA, puis Reviewer et certificat justifiant chaque ligne avec scripts/review_gate.py |
 
 Un nom de fichier cité dans ce tableau n’est pas une preuve : la section « État d’exécution du
 socle » sépare les fichiers présents dans l’arbre Git des contrôles non exécutés. M1 ne revendique
