@@ -348,24 +348,41 @@ livraison commun) et ne sont pas un livrable de F01. Aucun test de M2 n’a ét�
 checkpoint : M1 est un jalon documentaire en cours, ni livré ni validé.
 
 ## Traçabilité critère → fonctionnalité → invariant → jalon
-| Critère F01 | Décision | Fonctionnalité livrée | Invariant |
+| Critère réel de F01 | Décision | Règle visée (intitulé réel de `docs/specification.md`) | Feature responsable de la mise en œuvre | Contrôle attendu (base, API, tests) | Jalon de preuve |
+|---|---|---|---|---|---|
+| C1 | D2, D3 | « Base relationnelle ; identifiants UUID ; véritables clés étrangères et tables d’association uniques, jamais de listes d’identifiants en texte » | F01 (migrations du socle), première base consommée par F02 | Base : clés étrangères déclarées, tables d’association uniques | M2 : `tests/test_socle.py` à écrire puis exécuter |
+| C1 | D4 | « Tout objet métier appartient à un espace » · « Les relations doivent rester dans le même espace » | F02 (identité, espaces, adhésions), F24 (droits par espace et projet) | Base : clés composées sur `espace_id` ; API : filtrage d’espace et refus inter-espaces | M2 (base), M3 (API) |
+| C1 | D3 | « Les objets principaux ont un auteur, des dates de création/modification, une révision et une date d’archivage » · « Les suppressions d’objets utilisés passent par l’archivage » | F22 (registre objet, conflits, historique, archivage) | Base : colonnes d’audit et `archive_le` sans purge ; API : `If-Match` sur la révision | M2 (base), M3 (API) |
+| C1 | D3 | « Une version validée est immuable ; une révision crée un brouillon. Les clés stables identifient étapes et occurrences entre versions. » · « Les versions courantes appartiennent au bon parcours. » | F05 (parcours versionnés), F06 (étapes et transitions) | Base : `CHECK` sur le statut de version, unicité des clés stables ; API : lecture de la version courante | M2 (base), M3 (API) |
+| C1 | D5 | « Le point de contact garde une identité stable ; une occurrence décrit sa présence dans une étape et un canal. » | F07 (contacts, canaux, occurrences) | Base : unicité (étape, point de contact, canal) ; API : exposition de l’occurrence | M2 (base), M3 (API) |
+| C1 | D5 | « L’état d’une ressource est distinct de son intégration ; une opération définie n’est pas nécessairement assurée. » | F08 (opérations), F09 (ressources et intégration) | Base : colonnes d’état distinctes de l’intégration ; API : lecture des deux états | M2 (base), M3 (API) |
+| C1 | D5, D10 | « Une action mutualisée reste unique et peut bénéficier à plusieurs projets, contacts, opérations et ressources. » · « Les répartitions validées de charge et de budget totalisent chacune 100 %. » | F11 (actions et contributeurs), F12 (mutualisation et répartitions), F14 (estimations de charge et coût) | Base : action unique et tables de répartition ; API : refus d’une répartition dont le total n’est pas 100 % | M2 (base), M3 (validation) |
+| C1 | D5, D10 | « Elle peut être décomposée sans devenir son propre ancêtre. » · « Les dépendances n’ont pas de cycle. » | F13 (dépendances et blocages) | API : contrôle d’acyclicité avant enregistrement | M3 (validation applicative) |
+| C1 | D5, D10 | « Une seule décision est courante. » | F16 (décisions de priorité historisées) | Base : index partiel d’unicité ; API : décision courante unique | M2 (base), M3 (API) |
+| C1 | D5, D10 | « Rôles : administrateur d’espace ; pilote de projet ; contributeur ; commentateur ; lecteur. » · « Une action partagée expose son contenu commun et ses échanges aux membres autorisés des projets concernés, sans ouvrir les autres données de ces projets. » | F24 (droits par espace et projet, partage limité) | API : matrice rôle × droit, partage limité au contenu commun | M3 (API, droits) |
+| C1 | D9 | « Le registre objet relie les objets métier aux commentaires et événements avec intégrité du type. L’édition utilise la révision pour détecter les conflits et permettre la comparaison. » | F21 (commentaires, abonnements, notifications), F22 (registre objet) | API : lecture du registre avec intégrité de type, comparaison à partir de la révision | M3 (API) |
+| C2 | D2, D3, D6, D7 | Fixtures de démonstration sans donnée réelle et configuration d’exemple sans secrets (convention de `AGENTS.md`) | F02, F03 (premières features à charger des données de démonstration) | Migrations appliquées, fixtures chargées, configuration d’exemple sans secret | M2 : exécution des migrations et des fixtures |
+| C3 | D1, D8, D11 | « La CI exécute les contrôles de typage, de qualité et les tests utiles ; le parcours de démarrage est vérifié » | Toutes les features (bénéficiaires du contrôle) | CI : typage, qualité, tests, `selftest` sur la chaîne de démarrage | M4 : job `ci.yml` exécuté |
+
+La colonne « Contrôle attendu » liste des preuves à produire, pas des preuves obtenues : aux
+jalons M2 à M4, ces contrôles restent à exécuter, comme l’indique la section « État d’exécution
+du socle ». Le tableau ne nomme aucun invariant chiffré : il relie un critère réel de F01 à une
+règle identifiable de la spécification, à la décision qui l’exprime, à la feature qui la met en
+œuvre et à la vérification attendue.
+
+| Jalon | Nature | Contenu | Preuve associée |
 |---|---|---|---|
-| C1 | D1, D2, D3, D4, D6, D9, D10 | architecture de référence + conventions + contrat d’API (ADR 0001) | 3, 4, 9, 20 |
-| C2 | D2, D3, D6, D7 | migrations `0001`–`0005`, fixtures `espace-a`/`espace-b`, `config/journai.example.json`, commandes | 1, 12, 14, 17 |
-| C3 | D1, D8, D11 | `pyproject.toml`, `python -m journai`, `selftest`, flux `ci.yml` | 19, 22 |
-| C4 | — | tableau ci-dessus, repris dans chaque fiche de feature | 22 |
-| C5 | D3, D6, D7 | `archive_le` sans purge, `.env*` ignoré, fixtures `.test` et nommées | 15, 18 |
-| C6 | D3, D4, D5, D9, D10 | `CHECK` + clés étrangères composites + `validate.py` + `If-Match` | 1, 2, 4, 6, 8, 11, 14, 15, 19, 20 |
+| M1 | contrat documentaire | le présent ADR : critères C1–C3, décisions D1–D11, traçabilité ci-dessus | relecture de ce document ; M1 en cours, aucune preuve d’exécution |
+| M2 | fichiers à créer, puis exécuter | `config/journai.example.json`, migrations `0001`–`0005`, fixtures `espace-a`/`espace-b`, `pyproject.toml`, `tests/test_socle.py` | migrations appliquées et fixtures chargées par une exécution réelle des tests |
+| M3 | exécution à prouver | chaîne de démarrage et CLI (D8), API de lecture (D9), droits et validation (D10) | appels CLI et API exécutés, droits et validations vérifiés par les tests |
+| M4 | exécution à prouver | CI, typage, qualité, tests, démarrage vérifié (D11) | job `ci.yml` exécuté et son journal |
+| M5 | revue de livraison | PR #26 complète après M4 | certificat de revue justifiant chaque ligne, validé par `scripts/review_gate.py` |
 
-| Jalon | Contenu | Preuve |
-|---|---|---|
-| M1 | le présent ADR | références `journai/*.py`, en-têtes SQL, `pyproject.toml` |
-| M2 | migrations + fixtures conformes à D2, D3, D4, D7 | `migrations.py`, `seed.py`, `tests/test_socle.py` |
-| M3 | configuration, CLI, API, droits, validation (D6, D8, D9, D10) | `config/`, `cli.py`, `api.py`, `auth.py`, `rights.py`, `validate.py` |
-| M4 | CI, types, tests, démarrage vérifié (D11) | `ci.yml`, `pyproject.toml`, `requirements-dev.txt` |
-
-Les jalons sont séquentiels : M4 précède le retrait du brouillon de la PR #26, et le certificat
-de revue (M5) couvre la PR complète, pas un jalon isolé.
+Un nom de fichier cité dans ce tableau n’est pas une preuve : la section « État d’exécution du
+socle » sépare les fichiers présents dans l’arbre Git des contrôles non exécutés. M1 ne revendique
+que le contrat documentaire de C1 : le critère C1 global, M1 et F01 ne sont pas validés à ce
+checkpoint. Les jalons restent séquentiels : M4 précède le retrait du brouillon de la PR #26 et M5
+désigne la revue de la PR complète après M4, jamais le checkpoint d’un jalon isolé.
 
 ## Non objectifs de F01
 
