@@ -100,17 +100,17 @@ base et par l’API, et non pour un confort d’écriture.
 
 | Convention | Forme | Contrainte portée |
 |---|---|---|
-| Identifiant | `id TEXT NOT NULL PRIMARY KEY` | un seul format de clé, comparable et stable |
-| Identifiant généré | UUID v4 (`str(uuid.uuid4())`) hors fixtures | collision évitée sans séquence globale |
+| Identifiant | `id TEXT NOT NULL PRIMARY KEY` | UUID canonique, comparable et stable |
+| Identifiant généré | UUID v4 (`str(uuid.uuid4())`) pour les créations, UUID fixes dans les fixtures | collision évitée sans séquence globale |
 | Dates | texte ISO-8601 **avec décalage** (`2026-01-05T09:00:00+00:00`) | comparables triées, sans ambiguïté de fuseau |
 | Traçabilité | `cree_par`, `cree_le`, `modifie_par`, `modifie_le` maintenus par le serveur | C1 (jamais le client) |
 | Suppression | `archive_le` (suppression douce) ; jamais de purge | invariants d’audit et de rétablissement |
 | Concurrence | `revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1)` | C6 : version attendue obligatoire |
 | Version d’un parcours | `version_parcours(numero, perspective, statut, version_source_id)` | invariants 2 et 4 |
 
-- L’identifiant est une clé opaque : la base l’accepte en texte, ce qui permet d’une part les
-  UUID v4 générés par l’application, d’autre part les identifiants lisibles des fixtures
-  (`a-parc-insertion`), plus exploitables dans les journaux et les tests.
+- Les identifiants métier et leurs références sont des UUID canoniques stockés en texte. Les
+  fixtures utilisent des UUID synthétiques fixes pour garder leurs références reproductibles.
+  La conversion des identifiants hérités des fixtures fait partie de M2.
 - `archive_le` porte la date de suppression : la purge matérielle est une décision
   d’exploitation (anonymisation), jamais un comportement de l’API (C5).
 
@@ -202,11 +202,11 @@ requêtes**. Format canonique :
 {
   "env": "dev",
   "tables": [
-    { "table": "parcours", "rows": [ { "id": "a-parc-insertion", "...": "..." } ] }
+    { "table": "parcours", "rows": [ { "id": "5aa92392-935c-4335-908b-11ef73226055", "...": "..." } ] }
   ],
   "updates": [
-    { "table": "parcours", "id": "a-parc-insertion",
-      "set": { "version_cible_id": "a-vp-cible-2" } }
+    { "table": "parcours", "id": "5aa92392-935c-4335-908b-11ef73226055",
+      "set": { "version_cible_id": "adab9fb5-d793-41ca-96c0-f9db95c33375" } }
   ]
 }
 ```
@@ -225,7 +225,7 @@ requêtes**. Format canonique :
 - **Refus d’écrasement** : `journai/seed.py` refuse d’insérer dans une table déjà renseignée
   sans remplacement explicite (`--replace`). Une graine insérée est complète, ou n’est pas
   graine insérée est complète, ou n’est pas insérée.
-- **Aucune donnée réelle** : identifiants préfixés par le jeu (`a-`, `b-`), noms et courriels en
+- **Aucune donnée réelle** : UUID synthétiques fixes et distincts par jeu, noms et courriels en
   `.test`, valeurs numériques plausibles. Un contrôle de non-référence est possible hors ligne,
   il ne fait pas partie de la CI (C5).
 
@@ -255,9 +255,9 @@ requêtes**. Format canonique :
 - **Enveloppe de réponse** :
 
   ```json
-  { "data": [ { "id": "a-parc-insertion", "espace_id": "a-espace", "revision": 1 } ],
+  { "data": [ { "id": "5aa92392-935c-4335-908b-11ef73226055", "espace_id": "fa5b89cc-72ab-49a4-aa1d-3b18695bc483", "revision": 1 } ],
     "meta": { "ressource": "parcours", "total": 3, "limit": 50, "offset": 0,
-              "espace_id": "a-espace" } }
+              "espace_id": "fa5b89cc-72ab-49a4-aa1d-3b18695bc483" } }
   ```
 
   Détail : `data` est l’objet unique. Le détail accepte `?include=<nom>`, qui renvoie en plus
