@@ -175,6 +175,11 @@ il ne valide ni C1, ni M1, ni F01.
 - **Opération définie et occurrence assurée** : la définition réutilisable (F08) est distincte
   de la preuve d’exécution dans une occurrence. Une association seule ne prouve pas qu’une
   opération a été assurée. Les tests futurs devront distinguer les deux cas.
+- **Effets et mesures (F12/F23)** : `action_occurrence` conserve `effet_attendu` et
+  `etat_validation_effet`. La livraison d’une action et la validation de son effet restent
+  deux événements distincts. Un indicateur vise un projet ou une occurrence ; ses mesures
+  conservent période, source et confiance. Les validations et décisions significatives
+  sont historisées selon D3.
 - **Droits par espace et projet** : le rôle administrateur porte sur l’administration de
   l’espace. L’appartenance à une structure ou à un espace ne confère aucun droit automatique
   sur ses projets. L’habilitation projet est explicite dans `membre_projet` ; elle détermine les
@@ -195,7 +200,10 @@ il ne valide ni C1, ni M1, ni F01.
 - **Variables d’environnement, préfixe `JOURNAI_`** : `JOURNAI_ENV`, `JOURNAI_DB`,
   `JOURNAI_HOST`, `JOURNAI_PORT`, `JOURNAI_LOG_LEVEL`, `JOURNAI_SCHEMA_DIR`,
   `JOURNAI_JETON_DEV`, `JOURNAI_CORS_ORIGIN`. Aucun secret n’est lu depuis un fichier versionné.
-- **Clés de configuration** : `env`, `db`, `host`, `port`, `log_level`, `schema_dir`, `cible_son`.
+- **Clés de configuration** : `env`, `db`, `host`, `port`, `log_level`, `schema_dir` et
+  `cors_origin` correspondent respectivement à `JOURNAI_ENV`, `JOURNAI_DB`, `JOURNAI_HOST`,
+  `JOURNAI_PORT`, `JOURNAI_LOG_LEVEL`, `JOURNAI_SCHEMA_DIR` et `JOURNAI_CORS_ORIGIN`.
+  Le secret de démonstration est fourni uniquement par `JOURNAI_JETON_DEV`, sans clé JSON.
   Un environnement inconnu est refusé (`env` ∈ `dev`, `test`, `staging`, `prod`) : la CI et le
   CLI ne peuvent pas démarrer sur une valeur typographique.
 - **Secrets** : `.env*` est ignoré par Git (`​.gitignore`), seule `.env.example` est versionnée et
@@ -298,8 +306,15 @@ requêtes**. Format canonique :
   | `500` | erreur interne ; le message ne révèle ni données, ni contenu de requête |
 
 - **Enveloppe d’erreur** : `{ "error": { "code": "acces_refuse", "message": "…",
-  "champs": ["espace_id"] } }`. Les messages sont lisible par une personne bénéficiaire :
+  "champs": ["espace_id"] } }`. Les messages sont lisibles par une personne bénéficiaire :
   une raison, pas un texte technique (exigence de lisibilité du contrat d’API).
+- **Format HTTP et origine** : les réponses avec corps utilisent
+  `Content-Type: application/json; charset=utf-8`. `HEAD` conserve les en-têtes de
+  `GET` avec un corps vide. Pour une origine explicitement configurée, `OPTIONS`
+  répond sans données avec les méthodes de lecture et les en-têtes autorisés ;
+  `Access-Control-Allow-Origin` reprend cette seule origine et `Vary: Origin`
+  prévient les réutilisations de cache entre origines. Le contrôle d’accès reste
+  obligatoire sur les requêtes de lecture. Ce comportement reste à vérifier en M3.
 - **Corps refusé à la lecture** : une méthode autre que `GET`/`HEAD`/`OPTIONS` sur F01 rend
   `405` : les écritures relèvent des features métier concernées, et le socle n’accepte pas d’écriture non validée.
 
@@ -349,7 +364,7 @@ ne vaut ni intégration, ni exécution, ni validation.
 | `pyproject.toml` (3.12, dépendances vides, `journai` en commande) | absent | à créer (M2) |
 | `python -m journai`, `cli.py`, `init`, `seed`, `status`, `selftest` | absents | à créer (M3) |
 | `api.py`, `auth.py`, `rights.py`, `validate.py` (D9, D10) | absents | à créer (M3) |
-| `.github/workflows/ci.yml`, `requirements-dev.txt` (D11) | absents ; seul `review-gate.yml` existe dans l’arbre, son exécution n’est pas prouvée ici | à créer puis exécuter par la CI (M4, exigence C3) |
+| `.github/workflows/ci.yml`, `requirements-dev.txt`, `pyrightconfig.json` (D11) | absents ; seul `review-gate.yml` existe dans l’arbre, son exécution n’est pas prouvée ici | à créer puis exécuter par la CI (M4, exigence C3) |
 
 `scripts/review_gate.py` et `scripts/test_review_gate.py` existent dans le dépôt (flux de
 livraison commun) et ne sont pas un livrable de F01. Aucun test de M2 n’a été exécuté à ce
@@ -372,7 +387,7 @@ checkpoint : M1 est un jalon documentaire en cours, ni livré ni validé.
 | C1 | D9 | « Le registre objet relie les objets métier aux commentaires et événements avec intégrité du type. L’édition utilise la révision pour détecter les conflits et permettre la comparaison. » | F21 (commentaires, abonnements, notifications), F22 (registre objet) | API : lecture du registre avec intégrité de type, comparaison à partir de la révision | M3 (API) |
 | C1 | D4, D10 | Structure pilote et structures associées ; segments imbriqués et publics multiples par parcours. | F03, F04 | Contrôles futurs : rôles et rattachements explicites, refus des cycles et liens hors espace | M2/M3 et F03/F04 |
 | C1 | D5, D10 | Constats : source, date, confiance et distinction hypothèse/fait validé. Estimations et évaluations : dimensions séparées, échelles explicites et historique des avis. | F10, F14, F15 | Contrôles futurs : conserver champs de preuve, révisions et divergences sans moyenne implicite | M2/M3 et F10/F14/F15 |
-| C1 | D3, D9 | Historiser les changements significatifs et les décisions. Relier les indicateurs à un projet ou à une occurrence ; conserver période, source et confiance des mesures. Distinguer livraison et validation de l’effet. | F16, F22, F23 | Contrôles futurs : relire l’historique, filtrer les mesures et vérifier la validation indépendante de la livraison | M2/M3 et F16/F22/F23 |
+| C1 | D3, D5, D10 | Historiser les changements significatifs et les décisions. Relier les indicateurs à un projet ou à une occurrence ; conserver période, source et confiance des mesures. Distinguer livraison et validation de l’effet. | F16, F22, F23 | Contrôles futurs : relire l’historique, filtrer les mesures et vérifier la validation indépendante de la livraison | M2/M3 et F16/F22/F23 |
 | C2 | D2, D3, D6, D7, D8 | Migrations versionnées, fixtures synthétiques, configuration d’exemple sans secrets et commandes de lancement | F01 (socle) ; F02 et F03 (bénéficiaires) | Appliquer les migrations et charger les fixtures (M2), puis exécuter les commandes de lancement D8 (M3) | M2 et M3 |
 | C3 | D1, D8, D11 | « La CI exécute les contrôles de typage, de qualité et les tests utiles ; le parcours de démarrage est vérifié » | F01 (CI) ; autres features bénéficiaires | CI : typage, qualité, tests et selftest | M4 : job ci.yml exécuté et journal conservé |
 
