@@ -166,11 +166,14 @@ base et par l’API, et non pour un confort d’écriture.
   `action_operation`, `action_ressource`, `action_constat`, `dependance_action`,
   `contribution_action`). Une action n’est jamais recopiée par projet, porteur ou arbitrage
   (invariants 7, 8, 11).
-- **Droits, pas de rôle global** : `membre_espace(espace_id, utilisateur_id, role)`,
-  `membre_projet(projet_id, utilisateur_id, role)`, plus les colonnes de portage
-  (`porteur_id`, `responsable_id`). Il n’existe pas de rôle utilisateur global. Le rôle
-  administrateur est **restreint à l’administration de l’espace** (invariant 20, règle 3.19) :
-  `journai/rights.py` dérive une permission par espace + projet à partir de ces deux sources.
+- **Droits par espace et projet** : le rôle administrateur porte sur l’administration de
+  l’espace. L’appartenance à une structure ou à un espace ne confère aucun droit automatique
+  sur ses projets. L’habilitation projet est explicite dans `membre_projet` ; elle détermine les
+  opérations autorisées pour le pilote, le contributeur, le commentateur ou le lecteur.
+  Un membre autorisé sur le projet A peut consulter le contenu commun et les échanges d’une
+  action partagée avec A. Il ne peut pas consulter les autres données d’un projet B sans
+  habilitation propre sur B. Les relations restent dans le même espace.
+
 
 ### D6 — Conventions de configuration
 
@@ -265,12 +268,12 @@ requêtes**. Format canonique :
   `sens=asc|desc`, plus un filtre d’égalité `<colonne>=<valeur>` sur les colonnes retournées.
   Un nom de colonne inconnu, un `limit` hors plage et un `sens` invalide sont des erreurs `400`
   : la pagination est bornée pour que la lecture reste utilisable sous charge.
-- **Cloisonnement à l’entrée** : l’accès est déterminé par un jeton d’accessibilité fourni par le
-  serveur (`journai/auth.py`, jeton HMAC signé par `JOURNAI_JETON_DEV` en `dev`/`test`) transporté
-  par `Authorization: Bearer <jeton>` ; le dépôt de la session porte les espaces et projets
-  accessibles. Un accès non autorisé rend `403` avant toute lecture SQL, et une ressource d’un
-  espace non accessible n’apparaît jamais dans une liste. L’identifiant d’espace est
-  **déduit du dépôt**, jamais accepté comme paramètre de requête.
+- **Cloisonnement à l’entrée** : le jeton de démonstration identifie la session en dev/test.
+  L’espace autorisé et les habilitations explicites par projet viennent du contexte serveur.
+  Le périmètre doit être appliqué à chaque lecture, liste, détail et inclusion ; un projet
+  hors périmètre ou une relation hors espace ne doit exposer ni données ni agrégats.
+  Le partage d’une action autorise seulement son contenu commun et ses échanges dans le
+  projet habilité. Le contrôle des droits n’est pas délégué au client.
 - **Concurrence optimiste exposée** : le détail rend `ETag: "<id>@<revision>"`. `If-Match`
   est exigé pour la mise à jour (F02) et contrôlé contre `revision` : une écriture sur une
   révision dépassée rend `409`, jamais un écrasement (C6, invariants 4 et 19).
@@ -358,7 +361,7 @@ checkpoint : M1 est un jalon documentaire en cours, ni livré ni validé.
 | C1 | D5, D10 | « Une action mutualisée reste unique et peut bénéficier à plusieurs projets, contacts, opérations et ressources. » · « Les répartitions validées de charge et de budget totalisent chacune 100 %. » | F11 (actions et contributeurs), F12 (mutualisation et répartitions), F14 (estimations de charge et coût) | Base : action unique et tables de répartition ; API : refus d’une répartition dont le total n’est pas 100 % | M2 (base), M3 (validation) |
 | C1 | D5, D10 | Une action ne peut devenir son propre ancêtre et ses dépendances restent sans cycle | F11 (actions et sous-actions), F13 (dépendances) | Tests distincts : refuser un cycle de filiation parent/enfant (F11) et un cycle dans le graphe de dépendances (F13), y compris indirects | M3 (validation applicative) |
 | C1 | D5, D10 | « Une seule décision est courante. » | F16 (décisions de priorité historisées) | Base : index partiel d’unicité ; API : décision courante unique | M2 (base), M3 (API) |
-| C1 | D5, D10 | « Rôles : administrateur d’espace ; pilote de projet ; contributeur ; commentateur ; lecteur. » · « Une action partagée expose son contenu commun et ses échanges aux membres autorisés des projets concernés, sans ouvrir les autres données de ces projets. » | F24 (droits par espace et projet, partage limité) | API : matrice rôle × droit, partage limité au contenu commun | M3 (API, droits) |
+| C1 | D5, D9 | Habilitation explicite par projet, cloisonnement d’espace et partage limité au contenu commun d’une action et à ses échanges | F02, F03, F12, F24 | Tests futurs : refuser un projet sans habilitation, isoler listes/détails/inclusions, autoriser le contenu partagé sans exposer les autres données des projets | M3 (API et droits), contrôle complet en F24 |
 | C1 | D9 | « Le registre objet relie les objets métier aux commentaires et événements avec intégrité du type. L’édition utilise la révision pour détecter les conflits et permettre la comparaison. » | F21 (commentaires, abonnements, notifications), F22 (registre objet) | API : lecture du registre avec intégrité de type, comparaison à partir de la révision | M3 (API) |
 | C2 | D2, D3, D6, D7, D8 | Migrations versionnées, fixtures synthétiques, configuration d’exemple sans secrets et commandes de lancement | F01 (socle) ; F02 et F03 (bénéficiaires) | Appliquer les migrations et charger les fixtures (M2), puis exécuter les commandes de lancement D8 (M3) | M2 et M3 |
 | C3 | D1, D8, D11 | « La CI exécute les contrôles de typage, de qualité et les tests utiles ; le parcours de démarrage est vérifié » | F01 (CI) ; autres features bénéficiaires | CI : typage, qualité, tests et selftest | M4 : job ci.yml exécuté et journal conservé |
