@@ -1,0 +1,284 @@
+{
+  "tables": [
+    {
+      "table": "espace",
+      "rows": [
+        {
+          "id": "b-espace",
+          "nom": "Espace Urbanisme",
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "table": "membre_espace",
+      "rows": [
+        {
+          "espace_id": "b-espace",
+          "utilisateur_id": "u-espace-b",
+          "role": "administrateur"
+        }
+      ]
+    },
+    {
+      "table": "structure",
+      "rows": [
+        {
+          "id": "b-atelier",
+          "espace_id": "b-espace",
+          "nom": "Atelier Urbanisme",
+          "type_structure": "collectivite",
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "projet",
+      "rows": [
+        {
+          "id": "b-proj-atelier",
+          "espace_id": "b-espace",
+          "structure_pilote_id": "b-atelier",
+          "nom": "Permanence Quartier",
+          "finalite": "Tenir une permanence lisible et traçable par logement.",
+          "responsable_id": "u-espace-b",
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "projet_structure",
+      "rows": [
+        {
+          "projet_id": "b-proj-atelier",
+          "structure_id": "b-atelier",
+          "espace_id": "b-espace",
+          "role_dans_projet": "pilote"
+        }
+      ]
+    },
+    {
+      "table": "membre_projet",
+      "rows": [
+        {
+          "projet_id": "b-proj-atelier",
+          "utilisateur_id": "u-espace-b",
+          "espace_id": "b-espace",
+          "role": "pilote"
+        }
+      ]
+    },
+    {
+      "table": "public",
+      "rows": [
+        {
+          "id": "b-pub-riverains",
+          "espace_id": "b-espace",
+          "nom": "Riverains du quartier",
+          "role_interlocuteur": "beneficiaire",
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "canal",
+      "rows": [
+        {
+          "id": "b-canal-site",
+          "espace_id": "b-espace",
+          "nom": "Site de quartier",
+          "type_canal": "site_web",
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "point_contact",
+      "rows": [
+        {
+          "id": "b-pc-permanence",
+          "espace_id": "b-espace",
+          "projet_id": "b-proj-atelier",
+          "nom": "Permanence mensuelle",
+          "intention": "Recevoir les demandes d'urbanisme des riverains.",
+          "responsable_id": "u-espace-b",
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "parcours",
+      "rows": [
+        {
+          "id": "b-parc-atelier",
+          "espace_id": "b-espace",
+          "projet_id": "b-proj-atelier",
+          "nom": "Parcours permanence",
+          "finalite": "Une permanence qui trace la demande et sa réponse.",
+          "responsable_id": "u-espace-b",
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "parcours_public",
+      "rows": [
+        {
+          "parcours_id": "b-parc-atelier",
+          "public_id": "b-pub-riverains",
+          "espace_id": "b-espace"
+        }
+      ]
+    },
+    {
+      "table": "version_parcours",
+      "rows": [
+        {
+          "id": "b-vp-obs-1",
+          "parcours_id": "b-parc-atelier",
+          "espace_id": "b-espace",
+          "numero": 1,
+          "perspective": "observee",
+          "statut": "validee",
+          "valide_par": "u-espace-b",
+          "valide_le": "2026-01-22T09:00:00+00:00",
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "etape",
+      "rows": [
+        {
+          "id": "b-e-1",
+          "version_parcours_id": "b-vp-obs-1",
+          "espace_id": "b-espace",
+          "cle_stable": "permanence-01",
+          "titre": "Permanence",
+          "objectif_public": "Recevoir et accuser la demande.",
+          "ordre_affichage": 1,
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "occurrence_contact",
+      "rows": [
+        {
+          "id": "b-o-1",
+          "espace_id": "b-espace",
+          "etape_id": "b-e-1",
+          "point_contact_id": "b-pc-permanence",
+          "canal_id": "b-canal-site",
+          "cle_stable": "permanence-01",
+          "besoin_public": "Déposer une demande simple.",
+          "experience_attendue": "Un accusé de réception daté.",
+          "criticite": "mineure",
+          "etat_operationnel": "assure",
+          "frequence": "mensuelle",
+          "ordre_affichage": 1,
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "operation",
+      "rows": [
+        {
+          "id": "b-op-permanence",
+          "espace_id": "b-espace",
+          "projet_pilote_id": "b-proj-atelier",
+          "nom": "Tenue de la permanence",
+          "responsable_id": "u-espace-b",
+          "frequence": "mensuelle",
+          "mode_execution": "humain",
+          "etat_operationnel": "assure",
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "ressource",
+      "rows": [
+        {
+          "id": "b-res-salle",
+          "espace_id": "b-espace",
+          "projet_pilote_id": "b-proj-atelier",
+          "nom": "Salle de quartier",
+          "type_ressource": "local",
+          "etat": "disponible",
+          "responsable_id": "u-espace-b",
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "occurrence_operation",
+      "rows": [
+        {
+          "occurrence_contact_id": "b-o-1",
+          "operation_id": "b-op-permanence",
+          "espace_id": "b-espace",
+          "role_operation": "contributif"
+        }
+      ]
+    },
+    {
+      "table": "action",
+      "rows": [
+        {
+          "id": "b-act-local",
+          "espace_id": "b-espace",
+          "projet_pilote_id": "b-proj-atelier",
+          "titre": "Créneau de permanence fixe",
+          "description": "Un créneau mensuel communiqué aux riverains.",
+          "nature": "support",
+          "statut": "propose",
+          "responsable_id": "u-espace-b",
+          "critere_acceptation": "Créneau affiché en mairie et en ligne.",
+          "cree_par": "u-espace-b",
+          "cree_le": "2026-01-05T09:00:00+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "action_projet",
+      "rows": [
+        {
+          "action_id": "b-act-local",
+          "projet_id": "b-proj-atelier",
+          "espace_id": "b-espace",
+          "motif_rattachement": "Créneau de la permanence.",
+          "part_charge": 100
+        }
+      ]
+    }
+  ],
+  "updates": [
+    "UPDATE parcours SET version_observee_id='b-vp-obs-1' WHERE id='b-parc-atelier'"
+  ]
+}
