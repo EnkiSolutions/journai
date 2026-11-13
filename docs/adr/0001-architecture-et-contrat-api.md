@@ -223,9 +223,14 @@ la livraison de F01 exige aussi les preuves exécutables des jalons suivants.
   Un environnement inconnu est refusé (`env` ∈ `dev`, `test`, `staging`, `prod`) : la CI et le
   CLI ne peuvent pas démarrer sur une valeur typographique.
 - **Secrets** : `.env*` est ignoré par Git (`.gitignore`), `.env.example` est prévue pour M2 et
-  ne devra contenir que des noms de variables. Le jeton de démonstration est fourni par
-  `JOURNAI_JETON_DEV` (jamais par un fichier versionné) et n’est accepté que lorsque `env` est
-  `dev` ou `test`.
+  ne devra contenir que des noms de variables. `JOURNAI_JETON_DEV` fournit uniquement la clé de signature HMAC-SHA256 de démonstration :
+  une valeur ASCII aléatoire d’au moins 32 caractères, utilisée telle quelle comme octets ASCII,
+  sans valeur par défaut ni copie dans un fichier versionné. Ce n’est pas le jeton HTTP du client.
+  La clé et les jetons ne sont jamais journalisés ni renvoyés dans une erreur ; la clé n’est
+  jamais transmise au client. En `dev`/`test`, `serve` refuse de démarrer si cette clé est absente
+  ou invalide. En `staging`/`prod`, l’API de démonstration F01 refuse de démarrer, même si la clé
+  est fournie ; seule l’authentification réelle de F02 pourra y ouvrir l’API, sans repli sur ce
+  mécanisme. Ces refus restent à implémenter et à vérifier en M3.
 
 ### D7 — Format des fixtures
 
@@ -302,12 +307,40 @@ requêtes**. Format canonique :
   `sens=asc|desc`, plus un filtre d’égalité `<colonne>=<valeur>` sur les colonnes retournées.
   Un nom de colonne inconnu, un `limit` hors plage et un `sens` invalide sont des erreurs `400`
   : la pagination est bornée pour que la lecture reste utilisable sous charge.
-- **Cloisonnement à l’entrée** : le jeton de démonstration identifie la session en dev/test.
-  L’espace autorisé et les habilitations explicites par projet viennent du contexte serveur.
+- **Protocole de démonstration F01 (`dev`/`test` seulement)** : chaque lecture `GET`/`HEAD`
+  porte un unique en-tête `Authorization: Bearer <jeton>` ; aucun jeton en URL, cookie ou corps.
+  Le prévol `OPTIONS` sans données autorise l’en-tête `Authorization` uniquement pour l’origine
+  configurée selon les règles CORS ci-dessous ; il ne dispense pas la lecture d’authentification.
+  Le jeton a exactement la forme `v1.<payload>.<signature>`. `payload` est l’encodage base64url
+  sans remplissage d’un objet JSON UTF-8 sans clés dupliquées, contenant exclusivement `sub`
+  (UUID canonique de l’utilisateur), `espace_id` (UUID canonique de l’espace sélectionné),
+  `iat` et `exp` (entiers, secondes Unix UTC). `signature` est l’encodage base64url sans
+  remplissage du HMAC-SHA256 des octets ASCII de `v1.<payload>`, avec la clé définie en D6.
+  La signature est vérifiée en temps constant, sur les octets reçus, sans resérialiser le JSON ;
+  aucun algorithme fourni par le client n’est accepté. Il faut `0 <= iat <= maintenant < exp`
+  et `exp - iat <= 3600`. Transport absent ou mal formé, format, signature, revendications ou
+  dates invalides rendent `401`, sans détail sensible.
+  L’opérateur local de confiance construit et signe hors HTTP ces jetons à partir des seuls
+  identifiants synthétiques ; F01 n’expose aucun point de connexion ou de signature HTTP.
+  Le client reçoit seulement son jeton, jamais la clé. Changer d’espace exige un autre jeton
+  signé pour cet espace : aucun paramètre ou en-tête ne peut remplacer le contexte signé.
+  Une demande explicite pour un espace différent rend `403`.
+- **Cloisonnement à l’entrée** : après vérification du jeton, le serveur charge l’utilisateur
+  désigné par `sub` et exige un utilisateur actif (`401` sinon), puis vérifie son adhésion
+  active à `espace_id` (`403` sinon). L’espace signé sélectionne le contexte, il n’accorde pas
+  de droits : les rôles et les habilitations explicites par projet sont relus en base à chaque
+  requête, jamais fournis par le jeton. Un accès à un projet non habilité rend `403`.
   Le périmètre doit être appliqué à chaque lecture, liste, détail et inclusion ; un projet
   hors périmètre ou une relation hors espace ne doit exposer ni données ni agrégats.
   Le partage d’une action autorise seulement son contenu commun et ses échanges dans le
   projet habilité. Le contrôle des droits n’est pas délégué au client.
+- **Contrôles du protocole à produire** : F01 prévoit en M3 un jeton synthétique valide, puis
+  les refus `401` (absence, format, signature altérée, expiration, date future et utilisateur
+  inactif), `403` (autre espace, adhésion inactive et projet non habilité), le changement
+  d’espace par nouveau jeton, les prévols CORS et les refus de démarrage de D6. Les tests de
+  listes, détails et inclusions devront prouver l’absence de fuite, y compris les agrégats et
+  le partage limité d’actions ; F02/F24 reprendront ces invariants avec l’authentification réelle.
+  Ce sont des contrôles futurs, pas des résultats acquis ni une validation de M1.
 - **Concurrence optimiste exposée** : le détail d’une ressource dotée de `id` et `revision`
   rend `ETag: "<id>@<revision>"`. Un détail sans `revision` et les listes d’associations
   n’émettent pas cet ETag de révision. Les écritures des objets principaux, introduites par
