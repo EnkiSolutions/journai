@@ -54,7 +54,8 @@ base et par l’API, et non pour un confort d’écriture.
 D1–D11 définissent le contrat cible, pas une implémentation vérifiée. Leur formulation
 normative ne prouve ni la présence des fichiers ni l’exécution des contrôles : ces états
 sont distingués dans la section « État d’exécution du socle ». Ce checkpoint reste partiel ;
-il ne valide ni C1, ni M1, ni F01.
+la validation documentaire de C1/M1 doit être établie par la vérification dédiée du SHA ;
+la livraison de F01 exige aussi les preuves exécutables des jalons suivants.
 
 ### D1 — Langage, dépendances, outillage
 
@@ -153,8 +154,10 @@ il ne valide ni C1, ni M1, ni F01.
 
 - **Identité stable d’un point de contact** : `point_contact(nom, intention, responsable_id)` est
   une identité, jamais un calcul. Les occurrences de contact portent la dépendance d’exécution
-  (`occurrence_contact(etape_id, point_contact_id, canal_id, criticite, frequence, volume_estime, etat_operationnel)`) et
-  sont ce que la planification et l’exécution consomment (règle d’identité stable du contact et d’occurrence par étape et canal).
+  (`occurrence_contact(etape_id, point_contact_id, canal_id, cle_stable, criticite, frequence, volume_estime, etat_operationnel)`) et
+  sont ce que la planification et l’exécution consomment. La clé stable de l’occurrence est
+  unique dans sa version, indépendamment de la clé des étapes, et permet de retrouver la même
+  occurrence lors d’une révision. L’étape rattache l’occurrence à la version (F06/F07).
 - **Opérations et ressources d’un contact** : F08 et F09 réutilisent les définitions
   d’opération et de ressource. Les associations `occurrence_operation` et
   `occurrence_ressource` les relient à une occurrence de contact dans le même espace.
@@ -169,7 +172,8 @@ il ne valide ni C1, ni M1, ni F01.
   par `action_parent_id`. Les dépendances et contributions passent par leurs tables dédiées.
   Les projets, occurrences de contact, opérations, ressources et constats sont reliés par
   `action_projet`, `action_occurrence`, `action_operation`, `action_ressource` et `action_constat`.
-  L’action reste unique et sa charge est comptée une fois au portefeuille. Les estimations
+  L’action reste unique et sa charge est comptée une fois au portefeuille. Des livraisons
+  indépendantes deviennent des actions distinctes. Les estimations
   séparent charge, coût et complexité. Les évaluations historisent importance et impact
   sans effacer les désaccords. La criticité appartient à l’occurrence de contact.
 - **Opération définie et occurrence assurée** : la définition réutilisable (F08) est distincte
@@ -206,7 +210,7 @@ il ne valide ni C1, ni M1, ni F01.
   Le secret de démonstration est fourni uniquement par `JOURNAI_JETON_DEV`, sans clé JSON.
   Un environnement inconnu est refusé (`env` ∈ `dev`, `test`, `staging`, `prod`) : la CI et le
   CLI ne peuvent pas démarrer sur une valeur typographique.
-- **Secrets** : `.env*` est ignoré par Git (`​.gitignore`), `.env.example` est prévue pour M2 et
+- **Secrets** : `.env*` est ignoré par Git (`.gitignore`), `.env.example` est prévue pour M2 et
   ne devra contenir que des noms de variables. Le jeton de démonstration est fourni par
   `JOURNAI_JETON_DEV` (jamais par un fichier versionné) et n’est accepté que lorsque `env` est
   `dev` ou `test`.
@@ -328,7 +332,7 @@ type → plage → référence → cycle → obligation conditionnelle → clois
 |---|---|
 | type | `CHECK` sur les colonnes énumérées ; `validate.py` pour les types non contraints (date, montant, entier borné) |
 | valeur, plage | Contrôles futurs sur les colonnes du modèle : charge et coût non négatifs dans estimation_action, pourcentages de répartition entre 0 et 100 et total validé à 100 % par action |
-| unicité | Contrôles futurs : une adhésion par couple espace–utilisateur, un membre par couple projet–utilisateur et une clé stable par version. Les clés techniques composites (id, espace_id) servent à vérifier le cloisonnement D4 |
+| unicité | Contrôles futurs : une adhésion par couple espace–utilisateur, un membre par couple projet–utilisateur et des clés stables uniques par version pour les étapes et, séparément, pour les occurrences. Les clés techniques composites (id, espace_id) servent à vérifier le cloisonnement D4 |
 | référence | clé étrangère + `PRAGMA foreign_key_check` ; `validate.py` contrôle la cible **archivée** (référence à une ligne `archive_le` est refusée en écriture) |
 | cycle | chaîne `version_source_id` du même parcours contrôlée par `validate.py` (aucune boucle, source validée) |
 | obligation conditionnelle | `validate.py` : contrôles conditionnels définis par les features métier ; F11/F12 portent les champs et rattachements des actions, F13 les dépendances et F18 la vue Plan d’action |
@@ -377,7 +381,7 @@ checkpoint : M1 est un jalon documentaire en cours, ni livré ni validé.
 | C1 | D2, D3 | « Base relationnelle ; identifiants UUID ; véritables clés étrangères et tables d’association uniques, jamais de listes d’identifiants en texte » | F01 (migrations du socle), première base consommée par F02 | Tests : vérifier le format UUID des identifiants métier, le rejet des identifiants invalides, les clés étrangères et l’unicité des associations | M2 (base), M3 (validation API) |
 | C1 | D4 | « Tout objet métier appartient à un espace » · « Les relations doivent rester dans le même espace » | F02 (identité, espaces, adhésions), F24 (droits par espace et projet) | Base : clés composées sur `espace_id` ; API : filtrage d’espace et refus inter-espaces | M2 (base), M3 (API) |
 | C1 | D3 | « Les objets principaux ont un auteur, des dates de création/modification, une révision et une date d’archivage » · « Les suppressions d’objets utilisés passent par l’archivage » | F22 (registre objet, conflits, historique, archivage) | Base : colonnes d’audit et `archive_le` sans purge ; API : `If-Match` sur la révision | M2 (base), M3 (API) |
-| C1 | D3, D4, D10 | Versions de parcours, étapes en graphe et transitions au sein d’une même version | F05 (versions), F06 (étapes et transitions) | Tests : refuser la modification directe d’une version validée, vérifier qu’une révision crée un brouillon lié à sa source, préserver les clés stables et refuser une version courante d’un autre parcours ou une transition entre versions | M2 (intégrité), M3 (comportement API) |
+| C1 | D3, D4, D10 | Versions de parcours, étapes en graphe et transitions au sein d’une même version | F05 (versions), F06 (étapes et transitions) | Tests : refuser la modification directe d’une version validée, vérifier qu’une révision crée un brouillon lié à sa source, préserver les clés stables des étapes et des occurrences et refuser une version courante d’un autre parcours ou une transition entre versions | M2 (intégrité), M3 (comportement API) |
 | C1 | D5 | « Le point de contact garde une identité stable ; une occurrence décrit sa présence dans une étape et un canal. » | F07 (contacts, canaux, occurrences) | Base : unicité (étape, point de contact, canal) ; API : exposition de l’occurrence | M2 (base), M3 (API) |
 | C1 | D4, D5 | Opérations et ressources réutilisées par occurrence de contact | F08, F09 | Contrôles futurs : réutilisation dans plusieurs occurrences et refus d’une association hors espace | M2 (intégrité), M3 (API) |
 | C1 | D5 | « L’état d’une ressource est distinct de son intégration ; une opération définie n’est pas nécessairement assurée. » | F08 (opérations), F09 (ressources et intégration) | Base : colonnes d’état distinctes de l’intégration ; tests futurs : une opération définie et liée peut rester non assurée | M2 (base), M3 (API) |
