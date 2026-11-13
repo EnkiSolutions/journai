@@ -97,10 +97,16 @@ la livraison de F01 exige aussi les preuves exécutables des jalons suivants.
   connue, traitée en M2 : ajout d’une colonne `empreinte_sha256` et refus d’une migration dont le
   contenu change après journalisation — une migration validée est un contrat, pas un texte que la
   PR suivante réécrit.
-- **Ouverture de connexion** (contractuelle, posée par `journai/db.py`) : `PRAGMA foreign_keys
-  = ON`, `PRAGMA recursive_triggers = ON`, `PRAGMA journal_mode = WAL`, `foreign_keys="ON"` et
-  `autocommit=False`. Sans `foreign_keys = ON`, toutes les clés étrangères du schéma sont
-  silencieusement ignorées : les règles relationnelles de la spécification ne seraient pas garanties.
+- **Ouverture de connexion** (contractuelle, posée par `journai/db.py`) : `sqlite3.connect(..., autocommit=True)` (Python 3.12), puis, avant toute transaction,
+  `PRAGMA foreign_keys = ON`, `PRAGMA recursive_triggers = ON` et `PRAGMA journal_mode = WAL`.
+  Relire les PRAGMA : `foreign_keys` et `recursive_triggers` doivent valoir `1`, et
+  `journal_mode` doit valoir `wal` ; sinon fermer la connexion et refuser le démarrage.
+  Seulement après ces vérifications, passer `connexion.autocommit = False` pour les
+  transactions applicatives. `foreign_keys` n’est pas un argument de `sqlite3.connect` ;
+  l’activer dans une transaction est sans effet. Sans cette activation effective, les règles
+  relationnelles ne sont pas garanties. Contrôle F01 prévu en M2 : ouvrir réellement une
+  connexion sur fichier, relire ces PRAGMA après le passage en transactions applicatives et
+  vérifier le rejet d’une écriture violant une clé étrangère. Ce contrôle reste à exécuter.
 
 ### D3 — Identité, dates, audit, versionnage, suppression
 
@@ -108,12 +114,18 @@ la livraison de F01 exige aussi les preuves exécutables des jalons suivants.
 |---|---|---|
 | Identifiant | `id TEXT NOT NULL PRIMARY KEY` | UUID canonique, comparable et stable |
 | Identifiant généré | UUID v4 (`str(uuid.uuid4())`) pour les créations, UUID fixes dans les fixtures | collision évitée sans séquence globale |
-| Dates | texte ISO-8601 **avec décalage** (`2026-01-05T09:00:00+00:00`) | comparables triées, sans ambiguïté de fuseau |
+| Dates d’audit et autres instants | texte ISO-8601 **normalisé en UTC**, avec six décimales et suffixe `+00:00` (`2026-01-05T09:00:00.000000+00:00`) | l’ordre lexical du stockage canonique correspond à l’ordre chronologique |
 | Traçabilité | `cree_par`, `cree_le`, `modifie_par`, `modifie_le` maintenus par le serveur | convention d’audit (jamais le client) |
 | Suppression | `archive_le` (suppression douce) ; jamais de purge | invariants d’audit et de rétablissement |
 | Concurrence | `revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1)` | révision attendue pour détecter les conflits |
 | Version d’un parcours | `version_parcours(numero, perspective, statut, version_source_id)` | règles de version validée immuable et de versions courantes du bon parcours |
 
+- Les instants reçus avec un décalage sont analysés, convertis en UTC et sérialisés au
+  format canonique avant stockage, comparaison ou tri ; les instants sans fuseau sont refusés.
+  Des chaînes portant des décalages différents ne sont jamais comparées lexicalement telles
+  quelles. Les contrôles F01/F22 prévus en M2/M3 devront vérifier l’égalité et le tri
+  chronologique d’instants à décalages différents, dont un cas où l’ordre lexical brut est
+  inversé. Ce sont des contrôles à réaliser, pas des résultats acquis.
 - Les identifiants métier et leurs références sont des UUID canoniques stockés en texte. Les
   fixtures utilisent des UUID synthétiques fixes pour garder leurs références reproductibles.
   La conversion des identifiants hérités des fixtures fait partie de M2.
