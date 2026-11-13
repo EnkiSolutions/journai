@@ -268,10 +268,13 @@ requêtes**. Format canonique :
 
 - **Base de version** : `/api/v1` (`BASE`). Une rupture de contrat se fait par une nouvelle base,
   pas par une modification silencieuse d’un champ.
-- **Ressources** : une ressource par table du schéma, en lecture :
-  `GET /api/v1/<ressource>` (liste) et `GET /api/v1/<ressource>/<id>` (détail). Le nom de
-  ressource est le nom de la table ; le nom de champ est le nom de colonne, sans conversion. Il
-  n’y a pas d’objet « surcouche » à inventer pour le socle : la base est le contrat.
+- **Ressources** : une ressource par table métier autorisée, en lecture :
+  `GET /api/v1/<ressource>` (liste). Le catalogue exclut les tables techniques comme
+  `schema_migration`. Le nom de ressource est le nom de la table et les champs sont les colonnes.
+  Seules les ressources dotées d’un `id` acceptent `GET /api/v1/<ressource>/<id>` (détail).
+  Les associations à clé composée sans `id`, comme `parcours_public` et `action_constat`,
+  sont lues par liste filtrée sur leurs colonnes de clé ; leur route de détail rend `404`.
+  Aucun identifiant artificiel ni colonne de révision n’est ajouté à ces associations.
 - **Enveloppe de réponse** :
 
   ```json
@@ -293,9 +296,13 @@ requêtes**. Format canonique :
   hors périmètre ou une relation hors espace ne doit exposer ni données ni agrégats.
   Le partage d’une action autorise seulement son contenu commun et ses échanges dans le
   projet habilité. Le contrôle des droits n’est pas délégué au client.
-- **Concurrence optimiste exposée** : le détail rend `ETag: "<id>@<revision>"`. `If-Match`
-  sera exigé pour les écritures des features métier et contrôlé contre `revision` : une écriture sur une
-  révision dépassée devra rendre `409`, jamais un écrasement (règle de détection des conflits par la révision).
+- **Concurrence optimiste exposée** : le détail d’une ressource dotée de `id` et `revision`
+  rend `ETag: "<id>@<revision>"`. Un détail sans `revision` et les listes d’associations
+  n’émettent pas cet ETag de révision. Les écritures des objets principaux, introduites par
+  les features métier, exigeront `If-Match` contre leur `revision` ; une révision dépassée
+  rendra `409`, jamais un écrasement. Ces features devront rattacher une mutation
+  d’association sans révision à la révision de son objet principal dans la même transaction ;
+  F01 reste en lecture seule et ne promet aucune écriture d’association autonome.
 - **Codes d’état** :
 
   | Code | Cas |
@@ -389,7 +396,7 @@ checkpoint : M1 est un jalon documentaire en cours, ni livré ni validé.
 | C1 | D5, D10 | Une action ne peut devenir son propre ancêtre et ses dépendances restent sans cycle | F11 (actions et sous-actions), F13 (dépendances) | Tests distincts : refuser un cycle de filiation parent/enfant (F11) et un cycle dans le graphe de dépendances (F13), y compris indirects | M3 (validation applicative) |
 | C1 | D5, D10 | La priorité appartient au couple action–projet. Chaque décision conserve auteur, motif, estimation de la même action et évaluation du même couple. Une seule décision est courante. | F14, F15, F16 | Contrôles futurs : refuser les références incohérentes, vérifier unicité, historique et explicabilité du classement | M2/M3, comportement F16 |
 | C1 | D5, D9 | Habilitation explicite par projet, cloisonnement d’espace et partage limité au contenu commun d’une action et à ses échanges | F02, F03, F12, F24 | Tests futurs : refuser un projet sans habilitation, isoler listes/détails/inclusions, autoriser le contenu partagé sans exposer les autres données des projets | M3 (API et droits), contrôle complet en F24 |
-| C1 | D9 | « Le registre objet relie les objets métier aux commentaires et événements avec intégrité du type. L’édition utilise la révision pour détecter les conflits et permettre la comparaison. » | F21 (commentaires, abonnements, notifications), F22 (registre objet) | API : lecture du registre avec intégrité de type, comparaison à partir de la révision | M3 (API) |
+| C1 | D9 | « Le registre objet relie les objets métier aux commentaires et événements avec intégrité du type. L’édition utilise la révision pour détecter les conflits et permettre la comparaison. » | F21 (commentaires, abonnements, notifications), F22 (registre objet) | API : lecture du registre avec intégrité de type, comparaison à partir de la révision ; tester liste filtrée des associations sans id, détail refusé à 404 et absence d’ETag de révision pour les lignes sans revision | M3 (API) |
 | C1 | D4, D10 | Structure pilote et structures associées ; segments imbriqués et publics multiples par parcours. | F03, F04 | Contrôles futurs : rôles et rattachements explicites, refus des cycles et liens hors espace | M2/M3 et F03/F04 |
 | C1 | D5, D10 | Constats : source, date, confiance et distinction hypothèse/fait validé. Estimations et évaluations : dimensions séparées, échelles explicites et historique des avis. | F10, F14, F15 | Contrôles futurs : conserver champs de preuve, révisions et divergences sans moyenne implicite | M2/M3 et F10/F14/F15 |
 | C1 | D3, D5, D10 | Historiser les changements significatifs et les décisions. Relier les indicateurs à un projet ou à une occurrence ; conserver période, source et confiance des mesures. Distinguer livraison et validation de l’effet. | F16, F22, F23 | Contrôles futurs : relire l’historique, filtrer les mesures et vérifier la validation indépendante de la livraison | M2/M3 et F16/F22/F23 |
