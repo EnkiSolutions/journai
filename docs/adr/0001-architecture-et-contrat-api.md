@@ -67,7 +67,8 @@ la livraison de F01 exige aussi les preuves exécutables des jalons suivants.
 - **Pourquoi pas de framework Web** : F01 prévoit une API de lecture sur `http.server`
   (`journai/api.py`). L’absence de framework est un choix d’architecture, pas une exigence de C1.
   Le socle prévoit un contrat JSON stable, la validation, le cloisonnement et la concurrence
-  optimiste ; leur implémentation et leurs tests restent à produire en M3.
+  optimiste ; la lecture et son cloisonnement sont exercés localement en M3, tandis que les
+  écritures et la concurrence optimiste restent à implémenter et vérifier par les features dédiées.
 - **Frontend** : hors de F01 (voir *Non objectifs*). Le point d’entrée de la chaîne de démarrage
   est le CLI `python -m journai`.
 
@@ -76,21 +77,22 @@ la livraison de F01 exige aussi les preuves exécutables des jalons suivants.
 - **Moteur** : SQLite (bibliothèque standard `sqlite3`). Pourquoi : un fichier, aucune dépendance
   d’environnement (C3), transactions complètes, clés étrangères composites (D4), contraintes
   `CHECK` évaluées à l’écriture (règles métier de la spécification), `PRAGMA foreign_key_check` pour auditer une base migrée.
-- **Emplacement** : `var/journai-<env>.db`, chemin fourni par la configuration (jamais codé en
-  dur). `var/` est ignoré par Git. Une base de démonstration est donc toujours séparée d’une base
-  réelle ; seules les fixtures synthétiques sont destinées au dépôt (C2).
-- **Journal de migration** : table `schema_migration(version, applique_le, fichier)`
+- **Emplacement** : un fichier par environnement, au chemin fourni par la configuration ;
+  le défaut actuel est `var/journai.db` et ne varie pas automatiquement avec `env`. Il faut
+  configurer des chemins distincts pour séparer démonstration et données réelles. `var/` est
+  ignoré par Git ; seules les fixtures synthétiques sont destinées au dépôt (C2).
+- **Journal de migration** : table `schema_migration(version, applique_le, fichier, empreinte_sha256)`
   (`journai/migrations.py`). `version` est le préfixe numérique du nom de fichier ; une version
   journalisée n’est jamais rejouée (démarrage sur une base existante, idempotence de C2) ; les
   fichiers sont découverts par `glob("*.sql")`, filtrés sur le préfixe numérique, triés, découpés
-  par `sqlite3.complete_statement` et exécutés dans une transaction unique ; aucune version n’est
+  par `sqlite3.complete_statement` et exécutés dans une transaction par migration ; aucune version n’est
   journalisée si `PRAGMA foreign_key_check` et `PRAGMA integrity_check` échouent (la transaction
   est annulée, la base reste à la dernière version vérifiée) ; une migration est idempotente
   (`CREATE TABLE IF NOT EXISTS`).
-- **Empreinte de contenu** : le journal stocke le nom du fichier, pas son empreinte. Limite
-  connue, traitée en M2 : ajout d’une colonne `empreinte_sha256` et refus d’une migration dont le
-  contenu change après journalisation — une migration validée est un contrat, pas un texte que la
-  PR suivante réécrit.
+- **Empreinte de contenu** : le journal stocke le SHA-256 des octets de chaque migration.
+  Avant toute nouvelle application, `journai/migrations.py` refuse une empreinte différente ou
+  invérifiable, un fichier manquant et un journal hérité sans colonne d’empreinte. Les tests de
+  migration exercent ces refus : une migration validée est un contrat, pas un texte à réécrire.
 - **Ouverture de connexion** (contractuelle, posée par `journai/db.py`) : `sqlite3.connect(..., autocommit=True)` (Python 3.12), puis, avant toute transaction,
   `PRAGMA foreign_keys = ON`, `PRAGMA recursive_triggers = ON` et `PRAGMA journal_mode = WAL`.
   Relire les PRAGMA : `foreign_keys` et `recursive_triggers` doivent valoir `1`, et
@@ -98,9 +100,9 @@ la livraison de F01 exige aussi les preuves exécutables des jalons suivants.
   Seulement après ces vérifications, passer `connexion.autocommit = False` pour les
   transactions applicatives. `foreign_keys` n’est pas un argument de `sqlite3.connect` ;
   l’activer dans une transaction est sans effet. Sans cette activation effective, les règles
-  relationnelles ne sont pas garanties. Contrôle F01 prévu en M2 : ouvrir réellement une
-  connexion sur fichier, relire ces PRAGMA après le passage en transactions applicatives et
-  vérifier le rejet d’une écriture violant une clé étrangère. Ce contrôle reste à exécuter.
+  relationnelles ne sont pas garanties. `test_db` ouvre une connexion sur fichier, relit ces
+  PRAGMA après le passage en transactions applicatives et vérifie le rejet d’une écriture
+  violant une clé étrangère ; ce contrôle borné ne valide pas les règles métier d’écriture.
 
 ### D3 — Identité, dates, audit, versionnage, suppression
 
@@ -216,8 +218,8 @@ la livraison de F01 exige aussi les preuves exécutables des jalons suivants.
   Le secret de démonstration est fourni uniquement par `JOURNAI_JETON_DEV`, sans clé JSON.
   Un environnement inconnu est refusé (`env` ∈ `dev`, `test`, `staging`, `prod`) : la CI et le
   CLI ne peuvent pas démarrer sur une valeur typographique.
-- **Secrets** : `.env*` est ignoré par Git (`.gitignore`), `.env.example` est prévue pour M2 et
-  ne devra contenir que des noms de variables. `JOURNAI_JETON_DEV` fournit uniquement la clé de signature HMAC-SHA256 de démonstration :
+- **Secrets** : `.env*` est ignoré par Git (`.gitignore`), sauf `.env.example`, qui existe et
+  ne contient que des noms de variables. `JOURNAI_JETON_DEV` fournit uniquement la clé de signature HMAC-SHA256 de démonstration :
   une valeur ASCII aléatoire d’au moins 32 caractères, utilisée telle quelle comme octets ASCII,
   sans valeur par défaut ni copie dans un fichier versionné. Ce n’est pas le jeton HTTP du client.
   La clé et les jetons ne sont jamais journalisés ni renvoyés dans une erreur ; la clé n’est
@@ -248,18 +250,16 @@ requêtes**. Format canonique :
   du schéma (parent avant enfant), `espace_id` incluse.
 - `updates` : opérations `{table, id, set}` appliquées après toutes les insertions, pour les
   références circulaires assumées en D4. Une `update` cible une ligne existante (le nombre de
-  lignes touchées est contrôlé) et ne contient aucune clause SQL écrite à la main. Limite connue,
-  traitée en M2 : les fixtures actuelles expriment ces `updates` par une chaîne `UPDATE` et n’ont
-  pas de champ `env` ; M2 convertit `journai/fixtures/espace-a.json` et
-  `journai/fixtures/espace-b.json` au format ci-dessus, fait lire `env` (et le contrôle
-  `allow_replace`) par `journai/seed.py`, et fait refuser au semis une clause SQL libre.
-- `env` : environnement autorisé (`dev`, `test`). Un fixture `dev` est refusé sur `prod`, qui ne
-  reçoit donc jamais de fixture.
+  lignes touchées est contrôlé) et ne contient aucune clause SQL écrite à la main. Les deux
+  fixtures utilisent ce format et déclarent `env` ; `journai/seed.py` refuse le SQL libre et
+  exige `replace` ainsi que `allow_replace` pour remplacer les données.
+- `env` : le champ du fixture et l’environnement courant doivent chacun être `dev` ou `test` ;
+  le semis refuse notamment `staging` et `prod`, sans exiger que les deux valeurs coïncident.
 - **Refus d’écrasement** : `journai/seed.py` refuse d’insérer dans une table déjà renseignée
   sans remplacement explicite (`--replace`). Le semis est atomique : il est appliqué intégralement ou annulé.
 - **Aucune donnée réelle** : UUID synthétiques fixes et distincts par jeu, noms et courriels en
-  `.test`, valeurs numériques plausibles. Un contrôle de non-référence est possible hors ligne,
-  sa vérification reste à produire au titre des fixtures synthétiques (C2).
+  `.test`, valeurs numériques plausibles. `test_fixtures` vérifie notamment les UUID distincts,
+  les références internes à chaque jeu et les domaines de courriel ; cela ne valide pas C2.
 
 ### D8 — Chaîne de démarrage et CLI
 
@@ -328,13 +328,14 @@ requêtes**. Format canonique :
   hors périmètre ou une relation hors espace ne doit exposer ni données ni agrégats.
   Le partage d’une action autorise seulement son contenu commun et ses échanges dans le
   projet habilité. Le contrôle des droits n’est pas délégué au client.
-- **Contrôles du protocole à produire** : F01 prévoit en M3 un jeton synthétique valide, puis
+- **Contrôles du protocole** : F01 prévoit en M3 un jeton synthétique valide, puis
   les refus `401` (absence, format, signature altérée, expiration, date future et utilisateur
   inactif), `403` (autre espace, adhésion inactive et projet non habilité), le changement
   d’espace par nouveau jeton, les prévols CORS et les refus de démarrage de D6. Les tests de
   listes, détails et inclusions devront prouver l’absence de fuite, y compris les agrégats et
   le partage limité d’actions ; F02/F24 reprendront ces invariants avec l’authentification réelle.
-  Ce sont des contrôles futurs, pas des résultats acquis ni une validation de M1.
+  Les tests locaux couvrent des lectures et refus authentifiés ; leur réussite ne valide ni
+  toutes les règles applicatives, ni un jalon.
 - **Concurrence optimiste exposée** : le détail d’une ressource dotée de `id` et `revision`
   rend `ETag: "<id>@<revision>"`. Un détail sans `revision` et les listes d’associations
   n’émettent pas cet ETag de révision. Les écritures des objets principaux, introduites par
@@ -364,24 +365,28 @@ requêtes**. Format canonique :
   répond sans données avec les méthodes de lecture et les en-têtes autorisés ;
   `Access-Control-Allow-Origin` reprend cette seule origine et `Vary: Origin`
   prévient les réutilisations de cache entre origines. Le contrôle d’accès reste
-  obligatoire sur les requêtes de lecture. Ce comportement reste à vérifier en M3.
+  obligatoire sur les requêtes de lecture. Les tests HTTP locaux exercent `HEAD` et les
+  prévols CORS ; ces preuves ne valident pas le jalon M3.
 - **Corps refusé à la lecture** : une méthode autre que `GET`/`HEAD`/`OPTIONS` sur F01 rend
   `405` : les écritures relèvent des features métier concernées, et le socle n’accepte pas d’écriture non validée.
 
 ### D10 — Règles de validation applicative
 
 La validation SQLite (`CHECK`, clés étrangères, `UNIQUE`) ne couvre que les règles exprimables en
-DDL. Le reste devra être validé dans `journai/validate.py`, à créer en M3 et à appeler par l’API dans l’ordre :
-type → plage → référence → cycle → obligation conditionnelle → cloisonnement → concurrence.
+DDL. `journai/validation.py` existe : le semis y valide les UUID canoniques et normalise les
+instants ; le journal utilise aussi cette normalisation. Ces acquis sont bornés au semis et au
+journal, sans validation générale des futures écritures. Celles-ci devront être contrôlées par
+l’API et les features responsables dans l’ordre : type → plage → référence → cycle → obligation
+conditionnelle → cloisonnement → concurrence.
 
-| Règle du contrat | Contrôle à implémenter et à vérifier en M2/M3 |
+| Règle du contrat | Contrôle et responsabilité |
 |---|---|
-| type | `CHECK` sur les colonnes énumérées ; `validate.py` pour les types non contraints (date, montant, entier borné) |
+| type | `CHECK` sur les colonnes énumérées ; validations futures des écritures pour les types non contraints (date, montant, entier borné) |
 | valeur, plage | Contrôles futurs sur les colonnes du modèle : charge et coût non négatifs dans estimation_action, pourcentages de répartition entre 0 et 100 et total validé à 100 % par action |
 | unicité | Contrôles futurs : une adhésion par couple espace–utilisateur, un membre par couple projet–utilisateur et des clés stables uniques par version pour les étapes et, séparément, pour les occurrences. Les clés techniques composites (id, espace_id) servent à vérifier le cloisonnement D4 |
-| référence | clé étrangère + `PRAGMA foreign_key_check` ; `validate.py` contrôle la cible **archivée** (référence à une ligne `archive_le` est refusée en écriture) |
-| cycle | chaîne `version_source_id` du même parcours contrôlée par `validate.py` (aucune boucle, source validée) |
-| obligation conditionnelle | `validate.py` : contrôles conditionnels définis par les features métier ; F11/F12 portent les champs et rattachements des actions, F13 les dépendances et F18 la vue Plan d’action |
+| référence | clé étrangère + `PRAGMA foreign_key_check` ; contrôle futur de la cible **archivée** (référence à une ligne `archive_le` refusée en écriture) |
+| cycle | contrôle futur de la chaîne `version_source_id` du même parcours (aucune boucle, source validée), porté par F05 |
+| obligation conditionnelle | contrôles futurs définis par les features métier ; F11/F12 portent les champs et rattachements des actions, F13 les dépendances et F18 la vue Plan d’action |
 | versions et transitions | Contrôles futurs D4 : refuser l’édition d’une version validée, les sources et versions courantes d’un autre parcours, et les transitions entre versions ; vérifier la création d’un brouillon et la conservation des clés stables |
 | cloisonnement | clé étrangère composite D4 + dépôt d’accès D9 |
 | concurrence optimiste | colonne `revision` + `If-Match` D9 |
@@ -493,9 +498,10 @@ Preuves partielles : `test_actions_associations` vérifie les cinq liens, la mut
 l'isolation structurelle et la persistance ; `test_actions_relations` couvre parent direct,
 dépendances et contributions ; `test_arbitrage_donnees` couvre contraintes et snapshots des
 estimations et évaluations. `test_associations_espace` et `test_actions_associations` ne
-prouvent pas les droits de lecture. Restent à interdire les cycles indirects de filiation et de
-dépendances et à vérifier l'habilitation explicite par projet, ainsi que la lecture du contenu
-commun et des échanges d'une action partagée sans fuite des autres données des projets.
+prouvent pas les droits de lecture ; les tests de lecture M3 exercent séparément l'habilitation
+par projet et le masquage des données d'autres projets pour une action partagée. Ces tests ne
+prouvent pas les droits d'écriture ; les cycles indirects de filiation et de dépendances restent
+à interdire et vérifier par les features d'actions.
 
 R5 — D1/C2 : packaging et contrôles intégrés base/fixtures. Acquis borné : M2-PACK-1 au SHA d9e0b877d93ba14d6658b537a3ceafa6b9e0c40d prouve construction, contenu et installation temporaires du paquet, migrations/semis installés et persistance des deux espaces hors checkout. M2-INTEGRATION-1 reste à réaliser ; aucune validation implicite de C2/C3 ni du démarrage CLI/API/CI.
 
@@ -519,10 +525,10 @@ La présence de migrations ne prouve ni leur conformité aux règles ni leur ex�
 
 **Positif**
 
-- Le contrat répartit les contrôles entre base et API (D10) ; leurs preuves restent à
-  produire en M2/M3 avant de les considérer comme disponibles pour les features métier.
-- Le cloisonnement devra être garanti par les clés étrangères composites et par le périmètre
-  d’accès de l’API ; les tests de M2/M3 devront en démontrer le rejet hors espace.
+- Le contrat répartit les contrôles entre base et API (D10) ; les preuves structurelles M2 et
+  de lecture M3 ne démontrent pas les validations des futures écritures métier.
+- Le cloisonnement repose sur les clés étrangères composites et le périmètre d’accès de l’API ;
+  les tests M2/M3 exercent des refus structurels et de lecture, sans prouver les écritures.
 - La chaîne de démarrage est prévue en une commande, à vérifier par la CI en M4 : un
 développeur qui réussit `python -m journai selftest` a la même base que la CI.
 - L’absence de dépendance d’exécution est un choix cible ; elle ne dispense pas de
