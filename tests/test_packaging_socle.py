@@ -50,7 +50,8 @@ class PackagingSocleTests(unittest.TestCase):
                 content = archive.read(metadata).decode("utf-8")
                 self.assertIn("Requires-Python: >=3.12", content)
                 self.assertNotIn("Requires-Dist:", content)
-                self.assertFalse(any(name.endswith(".dist-info/entry_points.txt") for name in names))
+                entry_points, = (name for name in names if name.endswith(".dist-info/entry_points.txt"))
+                self.assertIn("journai = journai.cli:main", archive.read(entry_points).decode("utf-8"))
             target = root / "installed"
             subprocess.run(
                 [sys.executable, "-I", "-m", "pip", "--isolated", "install", "--no-index",
@@ -61,6 +62,17 @@ class PackagingSocleTests(unittest.TestCase):
                 [sys.executable, "-I", "-c", INSTALLED_CHECK, str(target), str(ROOT), str(root / "data.db")],
                 cwd=root, env=env, check=True,
             )
+            console = target / ("Scripts/journai.exe" if os.name == "nt" else "bin/journai")
+            console_env = {**env, "PYTHONPATH": str(target), "PYTHONUTF8": "1", "JOURNAI_DB": str(root / "console.db")}
+            result = subprocess.run([str(console)], cwd=root, env=console_env, text=True,
+                                    capture_output=True, encoding="utf-8")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("espace=2", result.stdout)
+            result = subprocess.run([str(console), "status"], cwd=root, env=console_env, text=True,
+                                    capture_output=True, encoding="utf-8")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("espace: 2", result.stdout)
+            self.assertIn("0007", result.stdout)
 
 
 INSTALLED_CHECK = r'''
