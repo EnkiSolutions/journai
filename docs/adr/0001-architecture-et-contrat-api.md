@@ -1,12 +1,13 @@
 # ADR 0001 — Architecture de référence et contrat d’API
 
-- **État** : décisions du contrat acceptées ; cette unité de démarrage ne valide aucun jalon.
+- **État** : décisions du contrat acceptées ; cette unité documentaire CI ne valide aucun jalon.
 - **Portée** : F01 — Socle exécutable, architecture et migrations
 - **Preuves** : GitHub #1 · Multica JOUR-3 · PR #26
 - **Critères couverts par le contrat** : C1 documenté par le présent ADR ; C2 (format des
   fixtures, conventions de migration et de configuration) et C3 (chaîne de démarrage, checks de
   la CI) décrits ici comme contrat ; les preuves locales ne valent pas acceptation des critères.
-- **Reste à faire** : écritures et règles métier des features dédiées ; CI, types et qualité en M4.
+- **Reste à faire** : écritures et règles métier des features dédiées ; réconciliation des
+  preuves et validation des jalons par le pilotage.
 
 ## Contexte
 
@@ -45,25 +46,23 @@ base et par l’API, et non pour un confort d’écriture.
 
 ## Décisions
 
-D1–D11 définissent le contrat cible, pas une implémentation vérifiée. Leur formulation
-normative ne prouve ni la présence des fichiers ni l’exécution des contrôles : ces états
+D1–D11 définissent le contrat et, pour la CI, les contrôles livrés. Leur formulation
+ne prouve pas à elle seule la présence des fichiers ni l’exécution des contrôles : ces états
 sont distingués dans la section « État d’exécution du socle ». Ce checkpoint reste partiel ;
 la validation documentaire de C1/M1 doit être établie par la vérification dédiée du SHA ;
 la livraison de F01 exige aussi les preuves exécutables des jalons suivants.
 
 ### D1 — Langage, dépendances, outillage
 
-- **Python 3.12**, paquets `journai` (paquet d’application) et `scripts` (outillage de
+- **Python 3.12 ou plus**, paquets `journai` (paquet d’application) et `scripts` (outillage de
   dérive/contrôle). **Choix cible : aucune dépendance d’exécution** : `dependencies = []` dans
   `pyproject.toml`. La bibliothèque standard fournit tout le socle : `sqlite3`,
   `http.server`, `json`, `argparse`, `logging`, `hashlib`, `uuid`, `datetime`,
   `importlib.resources`.
-- **Outil de développement, jamais d’exécution** : `ruff` (qualité + format), `mypy`
-  (vérification de types) et `pyright` (types + config `pyrightconfig.json`) seront déclarés dans
-  `requirements-dev.txt` et dans `[project.optional-dependencies] dev`. Une CI qui « exécute les
-  checks utiles » (C3) a besoin d’un vérificateur de types et d’un lanceur de tests : `unittest`
-  est la bibliothèque standard, `ruff`/`mypy`/`pyright` sont les outils standards de ces checks.
-  Ils ne sont jamais importés par `journai/`.
+- **Outils de développement** : l’extra `dev` de `pyproject.toml` déclare `ruff==0.12.12`
+  pour la qualité et `mypy==1.17.1` pour les types. `unittest` fournit le lanceur de tests
+  dans la bibliothèque standard. Ce choix minimal couvre les contrôles livrés sans dépendance
+  d’exécution ; Ruff format, pyright et pip-audit ne font pas partie du workflow livré.
 - **Pourquoi pas de framework Web** : F01 prévoit une API de lecture sur `http.server`
   (`journai/api.py`). L’absence de framework est un choix d’architecture, pas une exigence de C1.
   Le socle prévoit un contrat JSON stable, la validation, le cloisonnement et la concurrence
@@ -273,7 +272,8 @@ requêtes**. Format canonique :
   format horodaté. Une commande qui échoue rend un code de sortie non nul et un message
   explicatif sur la sortie d’erreur : la CI et le développeur voient la même raison.
 - **`selftest`** : migrations + graines + lecture API sur une base temporaire, hors du dépôt. La
-  CI devra l’exécuter en M4 pour prouver C3 ; ce contrat ne modifie pas le critère réel.
+  CI exécute `python -I -m journai selftest` avec le paquet installé ; cette exécution seule
+  ne valide pas C3.
 
 ### D9 — Contrat d’API de lecture (F01)
 
@@ -396,15 +396,25 @@ concurrence constituent le contrat cible (D3 à D5) : les acquis structurels M2 
 ne prouvent pas les écritures. Le certificateur de revue (`scripts/review_gate.py`)
 vérifie un certificat lié au SHA ; il ne prouve pas l’implémentation de ces règles.
 
-### D11 — Checks prévus pour la CI
+### D11 — Contrôles livrés pour la CI
 
-Le flux `CI` (`.github/workflows/ci.yml`, déclenché sur toute PR et sur `main`) devra exécuter en M4, dans
-l’ordre : `ruff check` + `ruff format --check` (qualité), `mypy` et `pyright` (types),
-`unittest discover` sur les tests du paquet **et** de `scripts/` (tests), `journai selftest`
-(chaîne de démarrage), `pip-audit` (dépendances, aucune dépendance d’exécution). Le flux
-`review-gate.yml` reste dédié au certificat de revue et à la validation du SHA.
+Le flux `CI` (`.github/workflows/ci.yml`) se déclenche sur `push` et `pull_request`, avec la
+permission `contents: read` ; son job utilise Ubuntu et Python 3.12. Il installe le paquet et
+l’extra `dev` par `python -m pip install setuptools wheel '.[dev]'`, puis exécute dans l’ordre :
 
-## État d’exécution du socle — unité M3-STARTUP-1
+```sh
+python -m ruff check journai
+python -m mypy --check-untyped-defs journai
+python -m unittest discover -s tests -p 'test_*.py' -v
+python -m unittest discover -s scripts -p 'test_*.py' -v
+python -I -m journai selftest
+```
+
+La suite `tests/` comprend notamment le wheel installé hors checkout et une lecture HTTP réelle.
+Le selftest isolé utilise le paquet installé. Ruff format, pyright et pip-audit ne sont pas
+exécutés par ce flux. `review-gate.yml` reste dédié au certificat de revue et à la validation du SHA.
+
+## État d’exécution du socle — unité M4-CI-CONTRACT-1
 
 Le contrat est plus large que les preuves : M2 apporte migrations `0001`–`0007`, fixtures,
 configuration sans secret et paquet installable ; les limites des acquis sont détaillées dans
@@ -414,9 +424,14 @@ exercés localement, y compris depuis le wheel installé hors checkout. Le selft
 propre base temporaire, lit réellement par HTTP et vérifie des refus. Les six tests HTTP restent
 dans `tests/test_api.py` ; `tests/test_http.py` n'existe pas.
 
-Ces exécutions ne valent pas validation de M3, C2, C3 ou F01. CI, types et qualité restent M4 ;
-le flux de revue commun ne les remplace pas. Les décisions et les contrôles futurs ci-dessous
-ne sont pas des écritures déjà livrées.
+La CI publiée a réussi au seul SHA `2737ac231966b1735133c6cab213f32e4da92445` :
+[push 43637005726](https://github.com/EnkiSolutions/journai/actions/runs/43637005726) et
+[pull_request 43637011571](https://github.com/EnkiSolutions/journai/actions/runs/43637011571).
+Les contrôles locaux du checkpoint sont distincts de ces résultats GitHub ; ils ne prouvent pas
+la réussite de la CI sur un nouveau SHA, qui sera relevée par le pilotage. Le flux de revue
+commun ne remplace pas ces contrôles. Ces preuves ne valident aucun jalon M2, M3 ou M4,
+aucun critère entier C1, C2 ou C3, ni F01 ; les décisions et contrôles futurs ci-dessous ne
+sont pas des écritures déjà livrées.
 
 ## Traçabilité critère → fonctionnalité → invariant → jalon
 | Critère réel de F01 | Décision | Règle visée (intitulé réel de `docs/specification.md`) | Feature responsable de la mise en œuvre | Contrôle attendu (base, API, tests) | Jalon de preuve |
@@ -445,18 +460,19 @@ audit, archivage et conflits relèvent de F22 ; immutabilité et révisions des 
 exécution des opérations de F08 ; cycles d'actions de F11/F13. Priorité courante, historique,
 immutabilité, remplacement au même couple et espace et absence de cycles relèvent de F16 ;
 conservation des estimations et avis relève de F14/F15. Ces obligations demeurent ouvertes même
-si les tests structurels ou de lecture réussissent. C3, CI, types et qualité restent M4.
+si les tests structurels ou de lecture réussissent. Les preuves CI, types et qualité relèvent
+de M4 sans valider le jalon ni C3 à elles seules.
 
 | Jalon | Nature | Contenu | Preuve associée |
 |---|---|---|---|
 | M1 | contrat documentaire | le présent ADR : critères C1–C3, décisions D1–D11, traçabilité ci-dessus | relecture documentaire, distincte des preuves d’exécution ultérieures |
 | M2 | socle structurel | configuration, migrations `0001`–`0007`, fixtures et paquet | preuves partielles et limites explicitées en R1–R5 |
 | M3 | exécution à prouver | chaîne de démarrage et CLI (D8), API de lecture (D9), droits et validation (D10) | appels CLI et API exécutés, droits et validations vérifiés par les tests |
-| M4 | exécution à prouver | CI, typage, qualité, tests, démarrage vérifié (D11) | job `ci.yml` exécuté et son journal |
+| M4 | exécution à confirmer au SHA courant | CI, typage, qualité, tests, démarrage vérifié (D11) | job `ci.yml` exécuté et son journal |
 | M5 | revue de livraison | Après M4, sortir la PR complète du brouillon puis soumettre son dernier SHA à CodeRabbit | Approbation CodeRabbit sans remarque ouverte ni erreur sur ce SHA, puis Reviewer et certificat justifiant chaque ligne avec scripts/review_gate.py |
 
 Un nom de fichier cité dans ce tableau n’est pas une preuve. Cette unité ne valide aucun jalon
-ni F01 ; le jugement de fin de M3 appartient à l'Orchestrateur. M4 précède le retrait du brouillon
+ni F01 ; le jugement des jalons appartient à l'Orchestrateur. M4 précède le retrait du brouillon
 de la PR #26 et M5 désigne la revue de la PR complète, jamais le checkpoint d’une unité isolée.
 
 ## État partiel des preuves M2 (R1–R5)
@@ -509,8 +525,8 @@ Depuis ce texte du plan, `test_packaging_socle` vérifie le wheel installé avec
 semis ; `test_socle_integration` utilise configuration, base, migrations et deux fixtures sur
 disque, puis contrôle journal et empreintes, idempotence, refus du second semis sans changement,
 PRAGMA, intégrité et réouverture. Les tests de démarrage M3 couvrent désormais la CLI et la
-lecture HTTP, mais pas les écritures serveur ; la CI reste M4. Les obligations et critères restent
-ouverts même lorsque les tests structurels réussissent.
+lecture HTTP, mais pas les écritures serveur ; la preuve CI bornée au SHA est décrite ci-dessus.
+Les obligations et critères restent ouverts même lorsque les tests structurels réussissent.
 
 ## Non objectifs de F01
 
@@ -529,8 +545,8 @@ La présence de migrations ne prouve ni leur conformité aux règles ni leur ex�
   de lecture M3 ne démontrent pas les validations des futures écritures métier.
 - Le cloisonnement repose sur les clés étrangères composites et le périmètre d’accès de l’API ;
   les tests M2/M3 exercent des refus structurels et de lecture, sans prouver les écritures.
-- La chaîne de démarrage est prévue en une commande, à vérifier par la CI en M4 : un
-développeur qui réussit `python -m journai selftest` a la même base que la CI.
+- La chaîne de démarrage est exercée par le selftest isolé de la CI ; le développeur peut
+  également lancer `python -m journai selftest` localement, sans préjuger du résultat GitHub.
 - L’absence de dépendance d’exécution est un choix cible ; elle ne dispense pas de
   contrôler l’approvisionnement des outils ni les secrets de configuration.
 
