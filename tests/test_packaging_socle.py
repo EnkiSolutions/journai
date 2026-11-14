@@ -8,6 +8,7 @@ import tempfile
 import time
 import unittest
 from contextlib import closing
+from email.parser import Parser
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -25,6 +26,29 @@ FIXTURES = {"espace-a.json", "espace-b.json"}
 
 
 class PackagingSocleTests(unittest.TestCase):
+    def assert_dev_metadata(self, content):
+        metadata = Parser().parsestr(content)
+        self.assertEqual(metadata.get_all("Provides-Extra", []), ["dev"])
+        self.assertCountEqual(metadata.get_all("Requires-Dist", []), [
+            'ruff==0.12.12; extra == "dev"',
+            'mypy==1.17.1; extra == "dev"',
+        ])
+
+    def test_dev_metadata_rejects_unwanted_requirements(self):
+        valid = ('Provides-Extra: dev\n'
+                 'Requires-Dist: ruff==0.12.12; extra == "dev"\n'
+                 'Requires-Dist: mypy==1.17.1; extra == "dev"\n')
+        self.assert_dev_metadata(valid)
+        for invalid in (
+            valid + 'Requires-Dist: unexpected==1\n',
+            valid + 'Requires-Dist: unexpected==1; extra == "other"\n',
+            valid.replace('extra == "dev"', 'extra == "dev" or python_version >= "3"', 1),
+            valid.replace('Provides-Extra: dev', 'Provides-Extra: other'),
+            valid.replace('ruff==0.12.12', 'ruff==0.12.11'),
+        ):
+            with self.subTest(metadata=invalid), self.assertRaises(AssertionError):
+                self.assert_dev_metadata(invalid)
+
     def test_wheel_contents_and_installed_migrations_and_seed(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -55,7 +79,7 @@ class PackagingSocleTests(unittest.TestCase):
                 metadata, = (name for name in names if name.endswith(".dist-info/METADATA"))
                 content = archive.read(metadata).decode("utf-8")
                 self.assertIn("Requires-Python: >=3.12", content)
-                self.assertNotIn("Requires-Dist:", content)
+                self.assert_dev_metadata(content)
                 entry_points, = (name for name in names if name.endswith(".dist-info/entry_points.txt"))
                 self.assertIn("journai = journai.cli:main", archive.read(entry_points).decode("utf-8"))
             target = root / "installed"
