@@ -473,38 +473,54 @@ désigne la revue de la PR complète après M4, jamais le checkpoint d’un jalo
 ## État partiel des preuves M2 (R1–R5)
 
 Ces preuves portent sur le socle présent, pas sur des écritures serveur absentes ; elles ne
-valident ni M2 ni F01. Le tableau de traçabilité conserve les contrôles attendus au-delà de
-ces résultats partiels. Pour les cinq règles suivies :
+valident ni M2 ni F01. Les cinq textes du plan enregistré sont repris intégralement ci-dessous ;
+les précisions qui les suivent situent les preuves disponibles sans accepter aucun critère.
+M2-INTEGRATION-1 est publié au SHA `391f87439ebc014c5a49db2ca615640f81c6c863` ; sa baseline
+initiale de comparaison est `d9e0b877d93ba14d6658b537a3ceafa6b9e0c40d`.
 
-- **R1 — identité, audit et versions** : `test_socle_integration` applique la configuration,
-  les migrations et les deux fixtures sur disque ; il contrôle journal et empreintes,
-  idempotence des migrations, refus du second semis sans changement, UUID et instants stockés,
-  colonnes et état initial d'audit des objets principaux, PRAGMA, intégrité et réouverture.
-  `test_identite_dates` vérifie notamment la normalisation des dates et le refus d'identifiants
-  invalides au semis. Restent à prouver : UUID v4 générés côté serveur, audit maintenu par le
-  serveur, archivage sans purge, conflits de révision et immutabilité des versions validées.
-- **R2 — priorité par couple et historique** : `test_arbitrage_donnees` contrôle estimations
-  et évaluations ; `test_decisions_priorite` contrôle notamment leurs références, les valeurs
-  et la chaîne structurelle de remplacement. Le DDL permet plusieurs racines pour un couple
-  et des modifications directes : il ne garantit ni une seule priorité courante, ni
-  l'immutabilité et l'historique applicatifs, ni la conservation des avis et estimations.
-  Le prédécesseur doit encore être garanti dans le même couple et espace ; les cycles indirects
-  de remplacement doivent être refusés. Ces comportements restent à livrer et vérifier.
-- **R3 — actions et relations** : `test_actions_associations` vérifie les liens d'une action
-  partagée et l'isolation structurelle ; `test_actions_relations` couvre parent direct,
-  dépendances et contributions. Les cycles indirects de filiation et de dépendances restent
-  à interdire côté applicatif ; les contraintes SQL directes ne le démontrent pas.
-- **R4 — habilitations et partage** : `test_associations_espace` et
-  `test_actions_associations` démontrent des contraintes relationnelles inter-espaces, non des
-  droits de lecture. L'habilitation explicite par projet et la lecture du contenu commun et des
-  échanges d'une action partagée sans fuite des autres données restent à implémenter et tester.
-- **R5 — opérations et exécution** : `test_operations_occurrences` montre notamment qu'une
-  opération liée peut rester `non_assure` ; ce n'est pas une preuve d'exécution par occurrence.
-  Le comportement métier d'exécution reste à réaliser et vérifier.
+R1 — D3 : UUID/UTC applicatifs et contrôle des décalages ; audit/archive/révision ; versions validées immuables. Ces obligations restent ouvertes, sans preuve par les seuls tests d'estimations/évaluations. Acquis supplémentaire borné : M2-IDTIME-1 au SHA ab5c0a25c72b4ed474f8253584cf2ac6fd9b5db7 valide les UUID et normalise les instants dans le semis/journal seulement ; confirmation intégrée, génération serveur, audit/archive/conflits applicatifs et versions validées immuables restent ouverts.
 
-`test_packaging_socle` vérifie le wheel installé avec migrations et semis ; ce packaging intégré
-ne prouve pas le démarrage CLI/API ni la CI, qui restent respectivement aux jalons M3/M4. Les
-obligations et critères ci-dessus restent ouverts même lorsque les tests structurels réussissent.
+Preuves partielles : `test_identite_dates` contrôle notamment la normalisation des dates et le
+refus d'identifiants invalides au semis. `test_socle_integration` confirme les UUID et instants
+stockés, les colonnes et l'état initial d'audit des objets principaux dans les deux fixtures.
+Cela ne prouve pas la génération serveur d'UUID v4, le maintien de l'audit, l'archivage sans
+purge, la détection des conflits de révision ni l'immutabilité des versions validées.
+
+R2 — D5/D10 : exécution distincte de la définition/rattachement d'opération ; décisions/priorités par couple action–projet, références retenues et remplacement structurel. M2-DECREF-1 désormais reconnue au SHA 867b40af32bcb98ca4d9b27c5af2bf1514158656 pour la seule preuve structurelle. L’association d’opération sans assurance implicite est testée ; exécution métier, comportements applicatifs et confirmation intégrée restent ouverts. Le critère R2 intégral d’origine est conservé dans le plan enregistré.
+
+Preuves partielles : `test_decisions_priorite` contrôle les valeurs, références retenues et la
+chaîne structurelle de remplacement ; `test_operations_occurrences` montre qu'une opération
+liée peut rester `non_assure`, sans prouver une exécution par occurrence. Le comportement métier
+d'exécution et les comportements applicatifs de décision restent à réaliser et vérifier ; la
+confirmation intégrée ne remplace pas ces preuves comportementales.
+
+R3 — D5/D10 applicatif : priorité courante, historique et immutabilité des décisions, conservation des avis et estimations via le comportement applicatif ; même couple/espace et cycles indirects des remplacements restent à traiter en M3/F16. Les seuls snapshots et FK ne prouvent pas ces comportements.
+
+Preuves partielles : `test_arbitrage_donnees` contrôle les contraintes et snapshots des
+estimations et évaluations ; `test_decisions_priorite` vérifie les références et remplacements
+structurels. Le DDL permet plusieurs racines pour un couple et des modifications directes : il
+ne garantit ni priorité courante unique, ni immutabilité et historique applicatifs, ni conservation
+des avis et estimations. Le prédécesseur dans le même couple et espace et le refus des cycles
+indirects de remplacement restent à implémenter et tester en M3/F16.
+
+R4 — Acquis bornés : M2-ACTLINK-1 couvre cinq associations, mutualisation/isolation/persistance au SHA 65d8d34c63b26213f88355fde628aba0de34e696 ; M2-ACTREL-1 couvre parents directs/dépendances/contributions au SHA a59b8261eeee475851b7d030a3e3b15dc41f0c9b ; M2-ARBDATA-1 couvre les contraintes et snapshots structurels d'estimations/évaluations au SHA 3de2bd35f6f37e13f5c502efa90f143fb5eb03a5. Aucun de ces acquis ne couvre les autres critères ouverts. Cycles indirects d'actions et habilitations restent applicatifs M3.
+
+Preuves partielles : `test_actions_associations` vérifie les cinq liens, la mutualisation,
+l'isolation structurelle et la persistance ; `test_actions_relations` couvre parent direct,
+dépendances et contributions ; `test_arbitrage_donnees` couvre contraintes et snapshots des
+estimations et évaluations. `test_associations_espace` et `test_actions_associations` ne
+prouvent pas les droits de lecture. Restent à interdire les cycles indirects de filiation et de
+dépendances et à vérifier l'habilitation explicite par projet, ainsi que la lecture du contenu
+commun et des échanges d'une action partagée sans fuite des autres données des projets.
+
+R5 — D1/C2 : packaging et contrôles intégrés base/fixtures. Acquis borné : M2-PACK-1 au SHA d9e0b877d93ba14d6658b537a3ceafa6b9e0c40d prouve construction, contenu et installation temporaires du paquet, migrations/semis installés et persistance des deux espaces hors checkout. M2-INTEGRATION-1 reste à réaliser ; aucune validation implicite de C2/C3 ni du démarrage CLI/API/CI.
+
+Depuis ce texte du plan, `test_packaging_socle` vérifie le wheel installé avec migrations et
+semis ; `test_socle_integration` utilise configuration, base, migrations et deux fixtures sur
+disque, puis contrôle journal et empreintes, idempotence, refus du second semis sans changement,
+PRAGMA, intégrité et réouverture. Ces contrôles intégrés ne prouvent ni les écritures serveur ni
+le démarrage CLI/API et la CI, qui restent respectivement aux jalons M3/M4. Les obligations et
+critères restent ouverts même lorsque les tests structurels réussissent.
 
 ## Non objectifs de F01
 
