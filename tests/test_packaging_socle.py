@@ -62,7 +62,7 @@ class PackagingSocleTests(unittest.TestCase):
                 [sys.executable, "-I", "-c", INSTALLED_CHECK, str(target), str(ROOT), str(root / "data.db")],
                 cwd=root, env=env, check=True,
             )
-            console = target / ("Scripts/journai.exe" if os.name == "nt" else "bin/journai")
+            console = target / "bin" / ("journai.exe" if os.name == "nt" else "journai")
             console_env = {**env, "PYTHONPATH": str(target), "PYTHONUTF8": "1", "JOURNAI_DB": str(root / "console.db")}
             result = subprocess.run([str(console)], cwd=root, env=console_env, text=True,
                                     capture_output=True, encoding="utf-8")

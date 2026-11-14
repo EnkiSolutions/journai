@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 
@@ -33,7 +34,7 @@ class CliTests(unittest.TestCase):
         return result
 
     def snapshot(self):
-        with sqlite3.connect(self.database) as connection:
+        with closing(sqlite3.connect(self.database)) as connection:
             return list(connection.iterdump())
 
     def test_init_seed_status_and_refusal(self):
@@ -43,7 +44,7 @@ class CliTests(unittest.TestCase):
         self.run_cli("init")
         self.assertEqual(self.snapshot(), before)
         self.run_cli("seed")
-        with sqlite3.connect(self.database) as connection:
+        with closing(sqlite3.connect(self.database)) as connection:
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM espace").fetchone()[0], 2)
         before = self.snapshot()
         status = self.run_cli("status").stdout
@@ -76,8 +77,13 @@ class CliTests(unittest.TestCase):
         schema.mkdir()
         (schema / "0001_bad.sql").write_text("INVALID SQL;", encoding="utf-8")
         self.run_cli("init", env={**self.env, "JOURNAI_SCHEMA_DIR": str(schema)}, success=False)
-        with sqlite3.connect(self.database) as connection:
-            self.assertEqual(connection.execute("SELECT COUNT(*) FROM schema_migration").fetchone()[0], 0)
+        with closing(sqlite3.connect(self.database)) as connection:
+            tables = {row[0] for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+            )}
+            self.assertLessEqual(tables, {"schema_migration"})
+            if "schema_migration" in tables:
+                self.assertEqual(connection.execute("SELECT COUNT(*) FROM schema_migration").fetchone()[0], 0)
 
 
 if __name__ == "__main__":
