@@ -31,9 +31,11 @@ def canonical_instant(value: object) -> str:
         raise ValueError("instant invalide ou sans fuseau") from exc
 
 
-def normalize_values(values: dict, nullable: set[str]) -> None:
+def normalize_values(values: dict, nullable: set[str], integer_columns: set[str]) -> None:
     for key, value in values.items():
-        is_uuid = key in {"id", "cle_stable"} or key.endswith(("_id", "_par"))
+        is_uuid = key not in integer_columns and (
+            key in {"id", "cle_stable"} or key.endswith(("_id", "_par"))
+        )
         if not is_uuid and key not in INSTANTS:
             continue
         if value is None and key in nullable:

@@ -47,7 +47,7 @@ def _quote(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
-def _values(values: object, columns: set[str], nullable: set[str], table: str) -> None:
+def _values(values: object, columns: set[str], nullable: set[str], integer_columns: set[str], table: str) -> None:
     if not isinstance(values, dict) or not values or not all(isinstance(k, str) for k in values):
         raise SeedError(f"{table} : valeurs mal formées")
     unknown = set(values) - columns
@@ -59,7 +59,7 @@ def _values(values: object, columns: set[str], nullable: set[str], table: str) -
         ) or (isinstance(value, int) and not -(2**63) <= value < 2**63):
             raise SeedError(f"{table} : valeur non scalaire ou invalide")
     try:
-        validation.normalize_values(values, nullable)
+        validation.normalize_values(values, nullable, integer_columns)
     except ValueError as exc:
         raise SeedError(f"{table} : {exc}") from exc
 
@@ -77,6 +77,7 @@ def seeded(connection: sqlite3.Connection, fixtures_dir: str | Path = FIXTURES_D
     known = set(db.table_names(connection)) - {JOURNAL_TABLE}
     columns: dict[str, set[str]] = {}
     nullable: dict[str, set[str]] = {}
+    integer_columns: dict[str, set[str]] = {}
 
     def check_table(name: object) -> str:
         if not isinstance(name, str) or name not in known or name.lower() == JOURNAL_TABLE.lower():
@@ -85,6 +86,7 @@ def seeded(connection: sqlite3.Connection, fixtures_dir: str | Path = FIXTURES_D
             info = list(connection.execute("SELECT * FROM pragma_table_info(?)", (name,)))
             columns[name] = {row[1] for row in info}
             nullable[name] = {row[1] for row in info if not row[3] and not row[5]}
+            integer_columns[name] = {row[1] for row in info if "INT" in row[2].upper()}
         return name
 
     counts: dict[str, int] = {}
@@ -93,7 +95,7 @@ def seeded(connection: sqlite3.Connection, fixtures_dir: str | Path = FIXTURES_D
             raise SeedError("entrée tables mal formée")
         table = check_table(entry["table"])
         for row in entry["rows"]:
-            _values(row, columns[table], nullable[table], table)
+            _values(row, columns[table], nullable[table], integer_columns[table], table)
         counts[table] = counts.get(table, 0) + len(entry["rows"])
     for update in fixture["updates"]:
         if not isinstance(update, dict) or set(update) != {"table", "id", "set"}:
@@ -103,10 +105,10 @@ def seeded(connection: sqlite3.Connection, fixtures_dir: str | Path = FIXTURES_D
             raise SeedError(f"{table} : update sans table à semer")
         if "id" not in columns[table]:
             raise SeedError(f"{table} : colonne id absente")
-        _values({"id": update["id"]}, columns[table], nullable[table], table)
+        _values({"id": update["id"]}, columns[table], nullable[table], integer_columns[table], table)
         if update["id"] is None:
             raise SeedError(f"{table} : id absent")
-        _values(update["set"], columns[table], nullable[table], table)
+        _values(update["set"], columns[table], nullable[table], integer_columns[table], table)
 
     for table in counts:
         if not replace and connection.execute(f"SELECT 1 FROM {_quote(table)} LIMIT 1").fetchone():

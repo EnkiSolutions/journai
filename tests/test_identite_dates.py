@@ -69,6 +69,41 @@ class IdentityTimeTests(unittest.TestCase):
             connection.close()
         self.assertEqual(self.snapshot(), snapshot)
 
+    def test_integer_keys_in_inserts_and_declarative_updates(self):
+        scripts = self.root / "technical-schema"
+        scripts.mkdir()
+        (scripts / "0001_technical.sql").write_text(
+            "CREATE TABLE parent (id INTEGER PRIMARY KEY);"
+            "CREATE TABLE child (id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES parent(id));",
+            encoding="utf-8",
+        )
+        fixtures = self.root / "technical-fixtures"
+        fixtures.mkdir()
+        (fixtures / "data.json").write_text(json.dumps({
+            "env": "test",
+            "tables": [
+                {"table": "parent", "rows": [{"id": 1}, {"id": 2}]},
+                {"table": "child", "rows": [{"id": 3, "parent_id": 1}]},
+            ],
+            "updates": [{"table": "child", "id": 3, "set": {"parent_id": 2}}],
+        }), encoding="utf-8")
+        path = self.root / "technical.db"
+        connection = db.connect(path)
+        try:
+            migrations.migrate(connection, scripts)
+            self.assertEqual(seed.seeded(connection, fixtures, env="test"), {"parent": 2, "child": 1})
+            self.assertEqual(tuple(connection.execute("SELECT id, parent_id FROM child").fetchone()), (3, 2))
+            self.assertEqual(db.integrity_problems(connection), [])
+            snapshot = list(connection.iterdump())
+        finally:
+            connection.close()
+        connection = db.connect(path)
+        try:
+            self.assertEqual(list(connection.iterdump()), snapshot)
+            self.assertEqual(db.integrity_problems(connection), [])
+        finally:
+            connection.close()
+
     def test_chronological_order_after_normalization(self):
         early = "2026-01-02T00:30:00+02:00"
         late = "2026-01-01T23:00:00+00:00"
@@ -121,7 +156,7 @@ class IdentityTimeTests(unittest.TestCase):
         seed.seeded(connection, self.fixtures, env="test")
         connection.close()
         original = self.snapshot()
-        for kind in ("id", "reference", "instant", "missing", "foreign_key"):
+        for kind in ("id", "reference", "integer_reference", "instant", "missing", "foreign_key"):
             with self.subTest(kind=kind):
                 data = copy.deepcopy(self.base)
                 update = data["updates"][0]
@@ -129,6 +164,8 @@ class IdentityTimeTests(unittest.TestCase):
                     update["id"] = 123
                 elif kind == "reference":
                     update["set"]["version_cible_id"] = "BAD"
+                elif kind == "integer_reference":
+                    update["set"]["version_cible_id"] = 123
                 elif kind == "instant":
                     update["set"]["modifie_le"] = "2026-01-01T00:00:00"
                 elif kind == "missing":
@@ -142,7 +179,7 @@ class IdentityTimeTests(unittest.TestCase):
                 try:
                     with self.assertRaises(seed.SeedError):
                         seed.seeded(connection, self.fixtures, env="test", replace=True, allow_replace=True)
-                    if kind in {"id", "reference", "instant"}:
+                    if kind in {"id", "reference", "integer_reference", "instant"}:
                         self.assertFalse(any(s.lstrip().upper().startswith(("UPDATE ", "DELETE ", "INSERT "))
                                              for s in statements))
                 finally:
