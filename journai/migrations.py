@@ -8,6 +8,8 @@ laisse une clé étrangère non satisfaite est annulée et la base reste à la v
 from __future__ import annotations
 
 import argparse
+import hashlib
+import re
 import sqlite3
 import sys
 from datetime import datetime, timezone
@@ -26,8 +28,12 @@ class MigrationError(RuntimeError):
 def _ensure_journal(connection: sqlite3.Connection) -> None:
     connection.execute(
         f"CREATE TABLE IF NOT EXISTS {JOURNAL_TABLE} ("  # noqa: S608 - table de service du socle
-        "version TEXT NOT NULL PRIMARY KEY, applique_le TEXT NOT NULL, fichier TEXT NOT NULL)"
+        "version TEXT NOT NULL PRIMARY KEY, applique_le TEXT NOT NULL, fichier TEXT NOT NULL, "
+        "empreinte_sha256 TEXT NOT NULL)"
     )
+    columns = {row[1] for row in connection.execute(f"PRAGMA table_info({JOURNAL_TABLE})")}  # noqa: S608
+    if "empreinte_sha256" not in columns:
+        raise MigrationError("journal de migrations hérité sans empreinte SHA-256 vérifiable")
 
 
 def applied_versions(connection: sqlite3.Connection) -> list[str]:
@@ -49,23 +55,31 @@ def discover(schema_dir: str | Path) -> list[tuple[str, Path]]:
 
 
 def plan(connection: sqlite3.Connection, schema_dir: str | Path) -> list[tuple[str, Path]]:
-    done = set(applied_versions(connection))
-    return [(version, path) for version, path in discover(schema_dir) if version not in done]
+    _ensure_journal(connection)
+    files = discover(schema_dir)
+    paths = dict(files)
+    rows = connection.execute(f"SELECT version, empreinte_sha256 FROM {JOURNAL_TABLE}")  # noqa: S608
+    done = set()
+    for version, digest in rows:
+        if version not in paths or digest != hashlib.sha256(paths[version].read_bytes()).hexdigest():
+            raise MigrationError(f"empreinte SHA-256 non vérifiable ou modifiée pour la migration {version}")
+        done.add(version)
+    return [(version, path) for version, path in files if version not in done]
 
 
 def statements(sql: str) -> list[str]:
     """Découpe le script en instructions complètes (sqlite3.complete_statement gère quotes et commentaires)."""
     out: list[str] = []
     buffer: list[str] = []
-    for line in sql.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("--"):
-            continue
-        buffer.append(line)
-        if sqlite3.complete_statement(" ".join(buffer)):
-            out.append(" ".join(buffer).strip())
+    for char in sql:
+        buffer.append(char)
+        if char == ";" and sqlite3.complete_statement("".join(buffer)):
+            instruction = "".join(buffer).strip()
+            if re.sub(r"--[^\n]*|/\*.*?\*/", "", instruction, flags=re.DOTALL).strip(" ;\t\r\n"):
+                out.append(instruction)
             buffer = []
-    if "".join(buffer).strip():
+    remainder = re.sub(r"--[^\n]*|/\*.*?\*/", "", "".join(buffer), flags=re.DOTALL)
+    if remainder.strip():
         raise MigrationError("script de migration incomplet (instruction non terminée)")
     return out
 
@@ -74,25 +88,33 @@ def migrate(connection: sqlite3.Connection, schema_dir: str | Path) -> list[str]
     _ensure_journal(connection)
     applied: list[str] = []
     for version, path in plan(connection, schema_dir):
-        instructions = statements(path.read_text(encoding="utf-8"))
+        content = path.read_bytes()
+        instructions = statements(content.decode("utf-8"))
         if not instructions:
             raise MigrationError(f"{path.name} ne contient aucune instruction")
+        for sql in instructions:
+            if re.match(r"\s*(?:(?:--[^\n]*(?:\n|$)|/\*.*?\*/)\s*)*"
+                        r"(?:BEGIN|COMMIT|END|ROLLBACK|SAVEPOINT|RELEASE)\b", sql, re.I | re.S):
+                raise MigrationError(f"{path.name} contient une commande de transaction interdite")
         connection.execute("BEGIN")
         try:
             for sql in instructions:
                 connection.execute(sql)
             connection.execute(
-                f"INSERT INTO {JOURNAL_TABLE} (version, applique_le, fichier) VALUES (?, ?, ?)",  # noqa: S608
-                (version, _now(), path.name),
+                f"INSERT INTO {JOURNAL_TABLE} (version, applique_le, fichier, empreinte_sha256) "  # noqa: S608
+                "VALUES (?, ?, ?, ?)",
+                (version, _now(), path.name, hashlib.sha256(content).hexdigest()),
             )
             problems = db.integrity_problems(connection)
+            if problems:
+                raise MigrationError(f"migration {path.name} : intégrité refusée {problems[:3]}")
+            connection.commit()
         except sqlite3.Error as exc:
             connection.rollback()
             raise MigrationError(f"migration {path.name} refusée : {exc}") from exc
-        if problems:
+        except Exception:
             connection.rollback()
-            raise MigrationError(f"migration {path.name} : intégrité refusée {problems[:3]}")
-        connection.commit()
+            raise
         applied.append(version)
     return applied
 
