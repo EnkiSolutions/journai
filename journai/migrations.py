@@ -15,7 +15,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from journai import db
+from journai import db, validation
 from journai.config import load_config
 
 JOURNAL_TABLE = "schema_migration"
@@ -119,7 +119,7 @@ def migrate(connection: sqlite3.Connection, schema_dir: str | Path) -> list[str]
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return validation.canonical_instant(datetime.now(timezone.utc).isoformat())
 
 
 def main(argv: list[str] | None = None) -> int:
