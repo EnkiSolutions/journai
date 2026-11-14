@@ -1,5 +1,4 @@
 import json
-import re
 import shutil
 import tempfile
 import unittest
@@ -76,8 +75,8 @@ class FixtureTests(unittest.TestCase):
                 if table == "objet":
                     self.assertTrue(any(t == row["type_objet"] and r.get("id") == row["id"]
                                         for t, r in rows))
-            for sql in data["updates"]:
-                for value in re.findall(r"'([^']+)'", sql):
+            for update in data["updates"]:
+                for value in (update["id"], *update["set"].values()):
                     self.assertEqual(str(UUID(value)), value)
                     references.add(value)
             self.assertLessEqual(references, ids)
@@ -101,7 +100,7 @@ class FixtureTests(unittest.TestCase):
                     connection = db.connect(database)
                     try:
                         migrations.migrate(connection, SCHEMA)
-                        seed.seeded(connection, fixture_dir)
+                        self.assertEqual(seed.seeded(connection, fixture_dir, env="test"), dict(expected))
                         self.assertEqual(db.integrity_problems(connection), [])
                         self.assertEqual(
                             {table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]

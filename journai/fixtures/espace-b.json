@@ -1,4 +1,5 @@
 {
+  "env": "dev",
   "tables": [
     {
       "table": "utilisateur",
@@ -290,6 +291,12 @@
     }
   ],
   "updates": [
-    "UPDATE parcours SET version_observee_id='615fa13b-2859-594a-94e3-988861ee14d2' WHERE id='9960a8d2-0857-515d-96e6-1d5ef80eb0c3'"
+    {
+      "table": "parcours",
+      "id": "9960a8d2-0857-515d-96e6-1d5ef80eb0c3",
+      "set": {
+        "version_observee_id": "615fa13b-2859-594a-94e3-988861ee14d2"
+      }
+    }
   ]
 }

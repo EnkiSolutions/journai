@@ -90,7 +90,7 @@ class DatabaseTests(unittest.TestCase):
         fixtures.mkdir()
         fixture = fixtures / "synthetic.json"
         def write_fixture(parent, child):
-            fixture.write_text(json.dumps({"tables": [
+            fixture.write_text(json.dumps({"env": "test", "tables": [
                 {"table": "parent", "rows": [{"id": parent}]},
                 {"table": "child", "rows": [{"id": 1, "parent_id": child}]},
             ]}), encoding="utf-8")
@@ -98,7 +98,7 @@ class DatabaseTests(unittest.TestCase):
         connection = db.connect(self.path)
         try:
             self.assertEqual(migrations.migrate(connection, schema), ["0001"])
-            self.assertEqual(seed.seeded(connection, fixtures), {"parent": 1, "child": 1})
+            self.assertEqual(seed.seeded(connection, fixtures, env="test"), {"parent": 1, "child": 1})
         finally:
             connection.close()
         connection = db.connect(self.path)
@@ -107,7 +107,7 @@ class DatabaseTests(unittest.TestCase):
             self.assertEqual(tuple(connection.execute("SELECT * FROM child").fetchone()), (1, 1))
             write_fixture(2, 999)
             with self.assertRaises(seed.SeedError):
-                seed.seeded(connection, fixtures, replace=True)
+                seed.seeded(connection, fixtures, env="test", replace=True, allow_replace=True)
         finally:
             connection.close()
         connection = db.connect(self.path)

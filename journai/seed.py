@@ -1,87 +1,136 @@
-"""Semis des fixtures synthétiques : données de démonstration, aucun bénéficiaire réel.
-
-Le fichier JSON décrit les lignes par table, dans un ordre d'insertion compatible avec les
-clés étrangères. Les `updates` règlent la circularité parcours <-> version déclarée.
-"""
+"""Chargement atomique des fixtures synthétiques dans une base migrée."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import sqlite3
 import sys
 from pathlib import Path
 
 from journai import db
 from journai.config import load_config
-from journai.migrations import applied_versions
+from journai.migrations import JOURNAL_TABLE, applied_versions
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 class SeedError(RuntimeError):
-    """Semis refusé : base non vide, table inconnue, colonne inconnue, clé étrangère satisfaite plus tard."""
+    """Semis refusé sans modifier les données précédentes."""
 
 
-def load_fixture(fixtures_dir: str | Path = FIXTURES_DIR) -> dict[str, object]:
+def load_fixture(fixtures_dir: str | Path = FIXTURES_DIR) -> dict[str, list]:
     path = Path(fixtures_dir)
     files = sorted(path.glob("*.json"))
     if not files:
         raise SeedError(f"aucun fixture dans {path}")
-    tables: list[dict[str, object]] = []
-    updates: list[str] = []
+    tables, updates = [], []
     for fixture in files:
-        with fixture.open(encoding="utf-8") as handle:
-            data = json.load(handle)
-        tables += list(data.get("tables", []))
-        updates += list(data.get("updates", []))
+        try:
+            with fixture.open(encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, ValueError) as exc:
+            raise SeedError(f"fixture illisible {fixture} : {exc}") from exc
+        if not isinstance(data, dict) or set(data) - {"env", "tables", "updates"}:
+            raise SeedError(f"fixture mal formé : {fixture}")
+        if data.get("env") not in ("dev", "test"):
+            raise SeedError(f"environnement du fixture invalide : {fixture}")
+        if not isinstance(data.get("tables"), list) or not isinstance(data.get("updates", []), list):
+            raise SeedError(f"tables ou updates mal formées : {fixture}")
+        tables.extend(data["tables"])
+        updates.extend(data.get("updates", []))
     return {"tables": tables, "updates": updates}
 
 
-def _check_columns(connection: sqlite3.Connection, table: str, rows: list[dict[str, object]]) -> None:
-    known = set(db.column_names(connection, table))
-    if not known:
-        raise SeedError(f"table inconnue dans le schéma : {table}")
-    for row in rows:
-        unknown = set(row) - known
-        if unknown:
-            raise SeedError(f"{table} : colonnes inconnues {sorted(unknown)}")
+def _quote(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
 
 
-def seeded(connection: sqlite3.Connection, fixtures_dir: str | Path = FIXTURES_DIR, *, replace: bool = False) -> dict[str, int]:
-    """Insère les fixtures ; refuse si les tables concernées ne sont pas vides (sauf replace)."""
+def _values(values: object, columns: set[str], table: str) -> None:
+    if not isinstance(values, dict) or not values or not all(isinstance(k, str) for k in values):
+        raise SeedError(f"{table} : valeurs mal formées")
+    unknown = set(values) - columns
+    if unknown:
+        raise SeedError(f"{table} : colonnes inconnues {sorted(unknown)}")
+    for value in values.values():
+        if not isinstance(value, (str, int, float, type(None))) or (
+            isinstance(value, float) and not math.isfinite(value)
+        ) or (isinstance(value, int) and not -(2**63) <= value < 2**63):
+            raise SeedError(f"{table} : valeur non scalaire ou invalide")
+
+
+def seeded(connection: sqlite3.Connection, fixtures_dir: str | Path = FIXTURES_DIR, *,
+           env: str | None = None, replace: bool = False, allow_replace: bool = False) -> dict[str, int]:
+    """Insère les fixtures en dev/test ; le remplacement exige les deux autorisations."""
+    if env not in ("dev", "test"):
+        raise SeedError(f"environnement courant interdit ou inconnu : {env!r}")
+    if replace and not allow_replace:
+        raise SeedError("remplacement non autorisé")
     if not applied_versions(connection):
         raise SeedError("base non migrée : lancer `python -m journai.migrations` avant le semis")
     fixture = load_fixture(fixtures_dir)
-    tables = fixture["tables"]
-    assert isinstance(tables, list)
+    known = set(db.table_names(connection)) - {JOURNAL_TABLE}
+    columns: dict[str, set[str]] = {}
+
+    def check_table(name: object) -> str:
+        if not isinstance(name, str) or name not in known or name.lower() == JOURNAL_TABLE.lower():
+            raise SeedError(f"table inconnue ou interdite : {name!r}")
+        if name not in columns:
+            columns[name] = {row[1] for row in connection.execute("SELECT * FROM pragma_table_info(?)", (name,))}
+        return name
+
     counts: dict[str, int] = {}
-    for entry in tables:
-        table, rows = str(entry["table"]), list(entry["rows"])
-        _check_columns(connection, table, rows)
-        if replace:
-            counts[table] = counts.get(table, 0) + len(rows)
-            continue
-        filled = connection.execute(f"SELECT COUNT(*) AS n FROM {table}").fetchone()  # noqa: S608
-        if int(filled["n"]):
+    for entry in fixture["tables"]:
+        if not isinstance(entry, dict) or set(entry) != {"table", "rows"} or not isinstance(entry["rows"], list):
+            raise SeedError("entrée tables mal formée")
+        table = check_table(entry["table"])
+        for row in entry["rows"]:
+            _values(row, columns[table], table)
+        counts[table] = counts.get(table, 0) + len(entry["rows"])
+    for update in fixture["updates"]:
+        if not isinstance(update, dict) or set(update) != {"table", "id", "set"}:
+            raise SeedError("update mal formée : attendu {table, id, set}, sans SQL libre")
+        table = check_table(update["table"])
+        if table not in counts:
+            raise SeedError(f"{table} : update sans table à semer")
+        if "id" not in columns[table]:
+            raise SeedError(f"{table} : colonne id absente")
+        _values({"id": update["id"]}, columns[table], table)
+        if update["id"] is None:
+            raise SeedError(f"{table} : id absent")
+        _values(update["set"], columns[table], table)
+
+    for table in counts:
+        if not replace and connection.execute(f"SELECT 1 FROM {_quote(table)} LIMIT 1").fetchone():
             raise SeedError(f"table {table} non vide : utiliser --replace pour la recharger")
-        counts[table] = len(rows)
     try:
         if replace:
-            for entry in reversed(tables):
-                table = str(entry["table"])
-                connection.execute(f"DELETE FROM {table}")  # noqa: S608 - vidage des tables de fixtures
-        for entry in tables:
-            table, rows = str(entry["table"]), list(entry["rows"])
-            for row in rows:
-                names = list(row)
-                marks = ", ".join(f":{name}" for name in names)
-                connection.execute(
-                    f"INSERT INTO {table} ({', '.join(names)}) VALUES ({marks})", row  # noqa: S608 - colonnes vérifiées
-                )
-        for sql in fixture["updates"]:
-            assert isinstance(sql, str)
-            connection.execute(sql)
+            # Rompre les références circulaires nullable décrites par les updates avant suppression.
+            for table in counts:
+                info = list(connection.execute("SELECT * FROM pragma_table_info(?)", (table,)))
+                nullable = {row[1] for row in info if not row[3] and not row[5]}
+                foreign = list(connection.execute("SELECT * FROM pragma_foreign_key_list(?)", (table,)))
+                updated = {key for update in fixture["updates"] if update["table"] == table
+                           for key in update["set"]}
+                clear = nullable & {row[3] for row in foreign if row[2] == table or row[3] in updated}
+                if clear:
+                    assignments = ", ".join(f"{_quote(key)} = NULL" for key in sorted(clear))
+                    connection.execute(f"UPDATE {_quote(table)} SET {assignments}")
+            for table in reversed(counts):
+                connection.execute(f"DELETE FROM {_quote(table)}")
+        for entry in fixture["tables"]:
+            table = entry["table"]
+            for row in entry["rows"]:
+                names = ", ".join(_quote(name) for name in row)
+                marks = ", ".join("?" for _ in row)
+                connection.execute(f"INSERT INTO {_quote(table)} ({names}) VALUES ({marks})", tuple(row.values()))
+        for update in fixture["updates"]:
+            assignments = ", ".join(f"{_quote(key)} = ?" for key in update["set"])
+            cursor = connection.execute(f"UPDATE {_quote(update['table'])} SET {assignments} WHERE id = ?",
+                                        (*update["set"].values(), update["id"]))
+            if cursor.rowcount != 1:
+                raise SeedError(f"{update['table']} : update doit toucher exactement une ligne")
         problems = db.integrity_problems(connection)
         if problems:
             raise SeedError(f"fixtures refusées par l'intégrité : {problems[:3]}")
@@ -91,7 +140,7 @@ def seeded(connection: sqlite3.Connection, fixtures_dir: str | Path = FIXTURES_D
         if isinstance(exc, (sqlite3.Error, SeedError)):
             raise SeedError(f"semis refusé : {exc}") from exc
         raise
-    return {table: n for table, n in counts.items()}
+    return counts
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -100,16 +149,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fixtures", dest="fixtures_dir", help="répertoire des fixtures JSON")
     parser.add_argument("--replace", action="store_true", help="vide les tables de fixtures avant insertion")
     args = parser.parse_args(argv)
-    config = load_config()
-    connection = db.connect(args.db_path or config.db_path)
     try:
-        counts = seeded(connection, args.fixtures_dir or config.schema_dir.parent / "fixtures", replace=args.replace)
-        print("fixtures insérées :", ", ".join(f"{t}={n}" for t, n in counts.items()))
-    except SeedError as exc:
+        config = load_config()
+        connection = db.connect(args.db_path or config.db_path)
+        try:
+            counts = seeded(connection, args.fixtures_dir or config.schema_dir.parent / "fixtures",
+                            env=config.env, replace=args.replace, allow_replace=args.replace)
+            print("fixtures insérées :", ", ".join(f"{t}={n}" for t, n in counts.items()))
+        finally:
+            connection.close()
+    except (SeedError, sqlite3.Error, OSError, ValueError, RuntimeError) as exc:
         print("ERREUR :", exc, file=sys.stderr)
         return 1
-    finally:
-        connection.close()
     return 0
 
 

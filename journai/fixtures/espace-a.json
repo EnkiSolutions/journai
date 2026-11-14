@@ -1,4 +1,5 @@
 {
+  "env": "dev",
   "tables": [
     {
       "table": "utilisateur",
@@ -1147,6 +1148,13 @@
     }
   ],
   "updates": [
-    "UPDATE parcours SET version_observee_id='c4b17fb7-d11a-59a8-879e-1b1748870f27', version_cible_id='c843b409-7a98-57e6-930c-9e5b3d828713' WHERE id='2d8a47bf-1ee9-5656-a076-a7122ad258aa'"
+    {
+      "table": "parcours",
+      "id": "2d8a47bf-1ee9-5656-a076-a7122ad258aa",
+      "set": {
+        "version_observee_id": "c4b17fb7-d11a-59a8-879e-1b1748870f27",
+        "version_cible_id": "c843b409-7a98-57e6-930c-9e5b3d828713"
+      }
+    }
   ]
 }
