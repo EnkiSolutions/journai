@@ -9,7 +9,7 @@ from journai import db, migrations
 
 SCHEMA = Path(__file__).resolve().parents[1] / "journai" / "migrations"
 VERSIONS_5 = [f"{number:04}" for number in range(1, 6)]
-NOW = "2026-01-01T00:00:00+00:00"
+NOW = "2026-01-01T00:00:00.000000+00:00"
 USER = "00000000-0000-4000-8000-000000000001"
 SPACE = [f"10000000-0000-4000-8000-{n:012d}" for n in (1, 2)]
 STRUCTURE = [f"20000000-0000-4000-8000-{n:012d}" for n in (1, 2)]
@@ -28,6 +28,10 @@ class ParcoursRelationsTests(unittest.TestCase):
         self.old_schema.mkdir()
         for file in SCHEMA.glob("000[1-5]_*.sql"):
             shutil.copyfile(file, self.old_schema / file.name)
+        self.schema_6 = root / "schema_6"
+        shutil.copytree(self.old_schema, self.schema_6)
+        for file in SCHEMA.glob("0006_*.sql"):
+            shutil.copyfile(file, self.schema_6 / file.name)
         self.connection = db.connect(self.path)
         self.addCleanup(self.close)
         self.assertEqual(migrations.migrate(self.connection, self.old_schema), VERSIONS_5)
@@ -80,16 +84,18 @@ class ParcoursRelationsTests(unittest.TestCase):
         before = self.references()
         data_before = [tuple(row) for table in ('parcours', 'version_parcours')
                        for row in self.connection.execute(f"SELECT * FROM {table} ORDER BY id")]
-        self.assertEqual(migrations.migrate(self.connection, SCHEMA), ['0006'])
+        self.assertEqual(migrations.migrate(self.connection, self.schema_6), ['0006'])
         self.reopen()
         self.assertEqual(self.references(), before)
         self.assertEqual(data_before, [tuple(row) for table in ('parcours', 'version_parcours')
                                        for row in self.connection.execute(f"SELECT * FROM {table} ORDER BY id")])
         self.assertEqual(migrations.applied_versions(self.connection), VERSIONS_5 + ['0006'])
-        self.assertEqual(migrations.migrate(self.connection, SCHEMA), [])
+        self.assertEqual(migrations.migrate(self.connection, self.schema_6), [])
         self.reopen()
         self.assertEqual(self.references(), before)
         self.assertEqual(migrations.applied_versions(self.connection), VERSIONS_5 + ['0006'])
+        self.assertEqual(migrations.migrate(self.connection, SCHEMA), ['0007'])
+        self.assertEqual(migrations.migrate(self.connection, SCHEMA), [])
 
     def test_inconsistent_upgrade_rolls_back(self):
         for column, wrong in (('version_observee_id', VERSION[1]), ('version_cible_id', VERSION[0])):
