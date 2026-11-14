@@ -22,16 +22,24 @@ python -m unittest discover -s scripts -p 'test_*.py' -v
 python scripts/review_gate.py --pr NUMERO
 ```
 
-## Contrôles locaux de développement (Python 3.12 ou plus)
+## CI et contrôles de développement (Python 3.12 ou plus)
+
+Le workflow GitHub Actions `.github/workflows/ci.yml` exécute ces commandes sous Python 3.12
+à chaque push et pull request, avec des permissions en lecture seule. La suite `tests/`
+construit et installe aussi le paquet hors checkout et vérifie son démarrage réel ; le
+selftest final utilise le paquet installé en mode isolé. Aucun déploiement n’est effectué.
 
 ```sh
-python -m pip install -e '.[dev]'
+python -m pip install setuptools wheel '.[dev]'
 python -m ruff check journai
 python -m mypy --check-untyped-defs journai
 python -m unittest discover -s tests -p 'test_*.py' -v
 python -m unittest discover -s scripts -p 'test_*.py' -v
-python -m journai selftest
+python -I -m journai selftest
 ```
+
+Le résultat GitHub propre à un SHA se consulte dans l’onglet Actions du dépôt ; les
+contrôles locaux ne préjugent pas de son état.
 
 ## Socle local (Python 3.12 ou plus)
 

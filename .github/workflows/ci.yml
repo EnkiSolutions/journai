@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install package and development tools
+        run: python -m pip install setuptools wheel '.[dev]'
+      - name: Ruff
+        run: python -m ruff check journai
+      - name: Mypy
+        run: python -m mypy --check-untyped-defs journai
+      - name: Application tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Review gate tests
+        run: python -m unittest discover -s scripts -p 'test_*.py' -v
+      - name: Isolated selftest
+        run: python -I -m journai selftest
