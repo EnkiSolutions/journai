@@ -470,6 +470,42 @@ que le contrat documentaire de C1 : le critère C1 global, M1 et F01 ne sont pas
 checkpoint. Les jalons restent séquentiels : M4 précède le retrait du brouillon de la PR #26 et M5
 désigne la revue de la PR complète après M4, jamais le checkpoint d’un jalon isolé.
 
+## État partiel des preuves M2 (R1–R5)
+
+Ces preuves portent sur le socle présent, pas sur des écritures serveur absentes ; elles ne
+valident ni M2 ni F01. Le tableau de traçabilité conserve les contrôles attendus au-delà de
+ces résultats partiels. Pour les cinq règles suivies :
+
+- **R1 — identité, audit et versions** : `test_socle_integration` applique la configuration,
+  les migrations et les deux fixtures sur disque ; il contrôle journal et empreintes,
+  idempotence des migrations, refus du second semis sans changement, UUID et instants stockés,
+  colonnes et état initial d'audit des objets principaux, PRAGMA, intégrité et réouverture.
+  `test_identite_dates` vérifie notamment la normalisation des dates et le refus d'identifiants
+  invalides au semis. Restent à prouver : UUID v4 générés côté serveur, audit maintenu par le
+  serveur, archivage sans purge, conflits de révision et immutabilité des versions validées.
+- **R2 — priorité par couple et historique** : `test_arbitrage_donnees` contrôle estimations
+  et évaluations ; `test_decisions_priorite` contrôle notamment leurs références, les valeurs
+  et la chaîne structurelle de remplacement. Le DDL permet plusieurs racines pour un couple
+  et des modifications directes : il ne garantit ni une seule priorité courante, ni
+  l'immutabilité et l'historique applicatifs, ni la conservation des avis et estimations.
+  Le prédécesseur doit encore être garanti dans le même couple et espace ; les cycles indirects
+  de remplacement doivent être refusés. Ces comportements restent à livrer et vérifier.
+- **R3 — actions et relations** : `test_actions_associations` vérifie les liens d'une action
+  partagée et l'isolation structurelle ; `test_actions_relations` couvre parent direct,
+  dépendances et contributions. Les cycles indirects de filiation et de dépendances restent
+  à interdire côté applicatif ; les contraintes SQL directes ne le démontrent pas.
+- **R4 — habilitations et partage** : `test_associations_espace` et
+  `test_actions_associations` démontrent des contraintes relationnelles inter-espaces, non des
+  droits de lecture. L'habilitation explicite par projet et la lecture du contenu commun et des
+  échanges d'une action partagée sans fuite des autres données restent à implémenter et tester.
+- **R5 — opérations et exécution** : `test_operations_occurrences` montre notamment qu'une
+  opération liée peut rester `non_assure` ; ce n'est pas une preuve d'exécution par occurrence.
+  Le comportement métier d'exécution reste à réaliser et vérifier.
+
+`test_packaging_socle` vérifie le wheel installé avec migrations et semis ; ce packaging intégré
+ne prouve pas le démarrage CLI/API ni la CI, qui restent respectivement aux jalons M3/M4. Les
+obligations et critères ci-dessus restent ouverts même lorsque les tests structurels réussissent.
+
 ## Non objectifs de F01
 
 Le contrat F01 prévoit les tables, les règles et la lecture. Les écritures et comportements
