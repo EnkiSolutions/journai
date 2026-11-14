@@ -175,10 +175,12 @@ la livraison de F01 exige aussi les preuves exécutables des jalons suivants.
   `occurrence_ressource` les relient à une occurrence de contact dans le même espace.
   Le rôle, l’usage et l’état d’utilisation sont portés par l’association. Les contrôles
   futurs devront prouver la réutilisation et rejeter les références hors espace.
-- **État d’une ressource vs état d’utilisation** : `ressource.etat` (état de l’objet de
-  référence) et `occurrence_ressource.etat_utilisation` (dégradé, indisponible, remplace, libere,
-  bloque, inchange) sont deux colonnes distinctes. Modifier l’un ne réécrit pas l’autre
-  (règle de distinction entre état de ressource et intégration).
+- **État d’une ressource vs état d’utilisation** : `ressource.etat` décrit l’état propre de
+  l’objet de référence. `occurrence_ressource.etat_utilisation` prend les valeurs `utilise`,
+  `reserve`, `consomme`, `hors_service` ou `non_utilise` : elles décrivent l’utilisation par
+  occurrence, sans modifier l’état propre de la ressource. Cet état d’utilisation est distinct
+  de `role_occurrence` et de l’usage ; modifier l’état de la ressource ou son intégration ne
+  réécrit pas l’autre (règle de distinction entre état de ressource et intégration).
 - **Action et associations** : `action` porte le titre, la nature, le statut, le responsable,
   les dates, la contrainte impérative et le critère d’acceptation. Les sous-actions se rattachent
   par `action_parent_id`. Les dépendances et contributions passent par leurs tables dédiées.

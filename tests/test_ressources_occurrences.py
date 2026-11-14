@@ -121,6 +121,58 @@ class RessourcesOccurrencesTests(unittest.TestCase):
         self.assertEqual(self.rows('occurrence_contact', 'id'), occurrences)
         self.assertEqual(db.integrity_problems(self.connection), [])
 
+    def test_utilisation_states_on_insert_update_and_reopen(self):
+        c = self.connection
+        insert = 'INSERT INTO occurrence_ressource VALUES (?, ?, ?, ?, ?, ?)'
+        update = ('UPDATE occurrence_ressource SET etat_utilisation = ? '
+                  'WHERE occurrence_contact_id = ? AND ressource_id = ?')
+        states = ('utilise', 'reserve', 'consomme', 'hors_service', 'non_utilise')
+        pairs = ((1, 1), (1, 2), (1, 3), (2, 1), (2, 2))
+        select = ('SELECT * FROM occurrence_ressource '
+                  'WHERE occurrence_contact_id = ? AND ressource_id = ?')
+        for (occurrence, resource), state in zip(pairs, states):
+            with self.subTest(insert=state):
+                values = self.link(occurrence, resource, state=state)
+                self.assertEqual(c.execute(insert, values).rowcount, 1)
+                self.assertEqual(tuple(c.execute(select, values[:2]).fetchone()), values)
+
+        for (occurrence, resource), state in zip(pairs, states[1:] + states[:1]):
+            with self.subTest(update=state):
+                values = self.link(occurrence, resource, state=state)
+                self.assertEqual(c.execute(update, (state, *values[:2])).rowcount, 1)
+                self.assertEqual(tuple(c.execute(select, values[:2]).fetchone()), values)
+
+        associations = self.rows('occurrence_ressource', 'occurrence_contact_id, ressource_id')
+        resources = self.rows('ressource', 'id')
+        occurrences = self.rows('occurrence_contact', 'id')
+
+        def assert_snapshots():
+            self.assertEqual(self.rows('occurrence_ressource', 'occurrence_contact_id, ressource_id'), associations)
+            self.assertEqual(self.rows('ressource', 'id'), resources)
+            self.assertEqual(self.rows('occurrence_contact', 'id'), occurrences)
+
+        invalid_states = (None, 'inconnu', 'dégradé', 'indisponible',
+                          'remplace', 'libere', 'bloque', 'inchange')
+        for state in invalid_states:
+            message = ('NOT NULL constraint failed: occurrence_ressource.etat_utilisation'
+                       if state is None else
+                       "CHECK constraint failed: etat_utilisation IN ('utilise', 'reserve', 'consomme', 'hors_service', 'non_utilise')")
+            for operation in ('insert', 'update'):
+                with self.subTest(invalid=state, operation=operation):
+                    with self.assertRaises(sqlite3.IntegrityError) as error:
+                        if operation == 'insert':
+                            c.execute(insert, self.link(3, 3, state=state))
+                        else:
+                            c.execute(update, (state, uid(10, 1), uid(13, 1)))
+                    self.assertEqual(str(error.exception), message)
+                    assert_snapshots()
+
+        c.commit()
+        self.close()
+        self.connection = db.connect(self.path)
+        assert_snapshots()
+        self.assertEqual(db.integrity_problems(self.connection), [])
+
 
 if __name__ == '__main__':
     unittest.main()
