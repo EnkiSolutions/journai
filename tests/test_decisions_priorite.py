@@ -133,7 +133,8 @@ class DecisionPrioriteTests(unittest.TestCase):
         for table, row_id in (('estimation_action', uid(6, 1)),
                               ('evaluation_action', uid(7, 1)), (TABLE, first['id'])):
             with self.subTest(table=table):
-                self.refused(FK, lambda: self.connection.execute(f'DELETE FROM {table} WHERE id = ?', (row_id,)))
+                # SQLite reports ON DELETE RESTRICT as a trigger constraint.
+                self.refused('SQLITE_CONSTRAINT_TRIGGER', lambda: self.connection.execute(f'DELETE FROM {table} WHERE id = ?', (row_id,)))
         self.assertEqual(self.snapshots(), self.expected)
         self.persisted(self.expected)
 
