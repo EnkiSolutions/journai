@@ -1,13 +1,24 @@
 {
   "tables": [
     {
+      "table": "utilisateur",
+      "rows": [
+        {
+          "id": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "nom_affiche": "Agent Espace B",
+          "email": "agent-b@synthese.test",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00"
+        }
+      ]
+    },
+    {
       "table": "espace",
       "rows": [
         {
-          "id": "b-espace",
+          "id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
           "nom": "Espace Urbanisme",
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00"
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00"
         }
       ]
     },
@@ -15,8 +26,8 @@
       "table": "membre_espace",
       "rows": [
         {
-          "espace_id": "b-espace",
-          "utilisateur_id": "u-espace-b",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
+          "utilisateur_id": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
           "role": "administrateur"
         }
       ]
@@ -25,12 +36,12 @@
       "table": "structure",
       "rows": [
         {
-          "id": "b-atelier",
-          "espace_id": "b-espace",
+          "id": "c4732488-0feb-5953-be2c-2539c3d48220",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
           "nom": "Atelier Urbanisme",
           "type_structure": "collectivite",
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00",
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
           "modifie_par": null
         }
       ]
@@ -39,14 +50,14 @@
       "table": "projet",
       "rows": [
         {
-          "id": "b-proj-atelier",
-          "espace_id": "b-espace",
-          "structure_pilote_id": "b-atelier",
+          "id": "31ebbcd3-5328-5b80-b1bb-239a3d51bc1e",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
+          "structure_pilote_id": "c4732488-0feb-5953-be2c-2539c3d48220",
           "nom": "Permanence Quartier",
           "finalite": "Tenir une permanence lisible et traçable par logement.",
-          "responsable_id": "u-espace-b",
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00",
+          "responsable_id": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
           "modifie_par": null
         }
       ]
@@ -55,9 +66,9 @@
       "table": "projet_structure",
       "rows": [
         {
-          "projet_id": "b-proj-atelier",
-          "structure_id": "b-atelier",
-          "espace_id": "b-espace",
+          "projet_id": "31ebbcd3-5328-5b80-b1bb-239a3d51bc1e",
+          "structure_id": "c4732488-0feb-5953-be2c-2539c3d48220",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
           "role_dans_projet": "pilote"
         }
       ]
@@ -66,9 +77,9 @@
       "table": "membre_projet",
       "rows": [
         {
-          "projet_id": "b-proj-atelier",
-          "utilisateur_id": "u-espace-b",
-          "espace_id": "b-espace",
+          "projet_id": "31ebbcd3-5328-5b80-b1bb-239a3d51bc1e",
+          "utilisateur_id": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
           "role": "pilote"
         }
       ]
@@ -77,12 +88,12 @@
       "table": "public",
       "rows": [
         {
-          "id": "b-pub-riverains",
-          "espace_id": "b-espace",
+          "id": "a641f73f-cf6f-5708-a5e3-4be57964b542",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
           "nom": "Riverains du quartier",
           "role_interlocuteur": "beneficiaire",
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00",
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
           "modifie_par": null
         }
       ]
@@ -91,12 +102,12 @@
       "table": "canal",
       "rows": [
         {
-          "id": "b-canal-site",
-          "espace_id": "b-espace",
+          "id": "080dbcae-e92c-5ae4-83e7-6786ff8f893c",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
           "nom": "Site de quartier",
           "type_canal": "site_web",
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00",
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
           "modifie_par": null
         }
       ]
@@ -105,14 +116,14 @@
       "table": "point_contact",
       "rows": [
         {
-          "id": "b-pc-permanence",
-          "espace_id": "b-espace",
-          "projet_id": "b-proj-atelier",
+          "id": "56a689c2-13f2-5634-b961-1b3620ada380",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
+          "projet_id": "31ebbcd3-5328-5b80-b1bb-239a3d51bc1e",
           "nom": "Permanence mensuelle",
           "intention": "Recevoir les demandes d'urbanisme des riverains.",
-          "responsable_id": "u-espace-b",
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00",
+          "responsable_id": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
           "modifie_par": null
         }
       ]
@@ -121,14 +132,14 @@
       "table": "parcours",
       "rows": [
         {
-          "id": "b-parc-atelier",
-          "espace_id": "b-espace",
-          "projet_id": "b-proj-atelier",
+          "id": "9960a8d2-0857-515d-96e6-1d5ef80eb0c3",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
+          "projet_id": "31ebbcd3-5328-5b80-b1bb-239a3d51bc1e",
           "nom": "Parcours permanence",
           "finalite": "Une permanence qui trace la demande et sa réponse.",
-          "responsable_id": "u-espace-b",
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00",
+          "responsable_id": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
           "modifie_par": null
         }
       ]
@@ -137,9 +148,9 @@
       "table": "parcours_public",
       "rows": [
         {
-          "parcours_id": "b-parc-atelier",
-          "public_id": "b-pub-riverains",
-          "espace_id": "b-espace"
+          "parcours_id": "9960a8d2-0857-515d-96e6-1d5ef80eb0c3",
+          "public_id": "a641f73f-cf6f-5708-a5e3-4be57964b542",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc"
         }
       ]
     },
@@ -147,16 +158,16 @@
       "table": "version_parcours",
       "rows": [
         {
-          "id": "b-vp-obs-1",
-          "parcours_id": "b-parc-atelier",
-          "espace_id": "b-espace",
+          "id": "615fa13b-2859-594a-94e3-988861ee14d2",
+          "parcours_id": "9960a8d2-0857-515d-96e6-1d5ef80eb0c3",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
           "numero": 1,
           "perspective": "observee",
           "statut": "validee",
-          "valide_par": "u-espace-b",
-          "valide_le": "2026-01-22T09:00:00+00:00",
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00",
+          "valide_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "valide_le": "2026-01-22T09:00:00.000000+00:00",
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
           "modifie_par": null
         }
       ]
@@ -165,15 +176,15 @@
       "table": "etape",
       "rows": [
         {
-          "id": "b-e-1",
-          "version_parcours_id": "b-vp-obs-1",
-          "espace_id": "b-espace",
-          "cle_stable": "permanence-01",
+          "id": "42631397-d7ae-58ee-b3e9-08b70d48d2c8",
+          "version_parcours_id": "615fa13b-2859-594a-94e3-988861ee14d2",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
+          "cle_stable": "ae6965e2-3c84-51e6-9ae2-746a4eaee6f2",
           "titre": "Permanence",
           "objectif_public": "Recevoir et accuser la demande.",
           "ordre_affichage": 1,
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00",
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
           "modifie_par": null
         }
       ]
@@ -182,20 +193,20 @@
       "table": "occurrence_contact",
       "rows": [
         {
-          "id": "b-o-1",
-          "espace_id": "b-espace",
-          "etape_id": "b-e-1",
-          "point_contact_id": "b-pc-permanence",
-          "canal_id": "b-canal-site",
-          "cle_stable": "permanence-01",
+          "id": "75a2941e-52af-55f2-a64a-42926b4c241e",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
+          "etape_id": "42631397-d7ae-58ee-b3e9-08b70d48d2c8",
+          "point_contact_id": "56a689c2-13f2-5634-b961-1b3620ada380",
+          "canal_id": "080dbcae-e92c-5ae4-83e7-6786ff8f893c",
+          "cle_stable": "8b8ef480-b10e-527b-bbaa-010728e7e6cd",
           "besoin_public": "Déposer une demande simple.",
           "experience_attendue": "Un accusé de réception daté.",
           "criticite": "mineure",
           "etat_operationnel": "assure",
           "frequence": "mensuelle",
           "ordre_affichage": 1,
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00",
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
           "modifie_par": null
         }
       ]
@@ -204,16 +215,16 @@
       "table": "operation",
       "rows": [
         {
-          "id": "b-op-permanence",
-          "espace_id": "b-espace",
-          "projet_pilote_id": "b-proj-atelier",
+          "id": "4f959268-4549-5a9f-8d62-baa6d0a67f99",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
+          "projet_pilote_id": "31ebbcd3-5328-5b80-b1bb-239a3d51bc1e",
           "nom": "Tenue de la permanence",
-          "responsable_id": "u-espace-b",
+          "responsable_id": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
           "frequence": "mensuelle",
           "mode_execution": "humain",
           "etat_operationnel": "assure",
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00",
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
           "modifie_par": null
         }
       ]
@@ -222,15 +233,15 @@
       "table": "ressource",
       "rows": [
         {
-          "id": "b-res-salle",
-          "espace_id": "b-espace",
-          "projet_pilote_id": "b-proj-atelier",
+          "id": "158f6554-5111-598c-a4a2-a054faff98dc",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
+          "projet_pilote_id": "31ebbcd3-5328-5b80-b1bb-239a3d51bc1e",
           "nom": "Salle de quartier",
           "type_ressource": "local",
           "etat": "disponible",
-          "responsable_id": "u-espace-b",
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00",
+          "responsable_id": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
           "modifie_par": null
         }
       ]
@@ -239,9 +250,9 @@
       "table": "occurrence_operation",
       "rows": [
         {
-          "occurrence_contact_id": "b-o-1",
-          "operation_id": "b-op-permanence",
-          "espace_id": "b-espace",
+          "occurrence_contact_id": "75a2941e-52af-55f2-a64a-42926b4c241e",
+          "operation_id": "4f959268-4549-5a9f-8d62-baa6d0a67f99",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
           "role_operation": "contributif"
         }
       ]
@@ -250,17 +261,17 @@
       "table": "action",
       "rows": [
         {
-          "id": "b-act-local",
-          "espace_id": "b-espace",
-          "projet_pilote_id": "b-proj-atelier",
+          "id": "b8a7c5ff-5229-571c-9e68-53b08e4cd8ab",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
+          "projet_pilote_id": "31ebbcd3-5328-5b80-b1bb-239a3d51bc1e",
           "titre": "Créneau de permanence fixe",
           "description": "Un créneau mensuel communiqué aux riverains.",
           "nature": "support",
           "statut": "propose",
-          "responsable_id": "u-espace-b",
+          "responsable_id": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
           "critere_acceptation": "Créneau affiché en mairie et en ligne.",
-          "cree_par": "u-espace-b",
-          "cree_le": "2026-01-05T09:00:00+00:00",
+          "cree_par": "34937cc9-15ac-517c-90ab-4377fdfe8d6b",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
           "modifie_par": null
         }
       ]
@@ -269,9 +280,9 @@
       "table": "action_projet",
       "rows": [
         {
-          "action_id": "b-act-local",
-          "projet_id": "b-proj-atelier",
-          "espace_id": "b-espace",
+          "action_id": "b8a7c5ff-5229-571c-9e68-53b08e4cd8ab",
+          "projet_id": "31ebbcd3-5328-5b80-b1bb-239a3d51bc1e",
+          "espace_id": "3d1510c4-5e02-54cf-8870-1fef5b8109bc",
           "motif_rattachement": "Créneau de la permanence.",
           "part_charge": 100
         }
@@ -279,6 +290,6 @@
     }
   ],
   "updates": [
-    "UPDATE parcours SET version_observee_id='b-vp-obs-1' WHERE id='b-parc-atelier'"
+    "UPDATE parcours SET version_observee_id='615fa13b-2859-594a-94e3-988861ee14d2' WHERE id='9960a8d2-0857-515d-96e6-1d5ef80eb0c3'"
   ]
 }
