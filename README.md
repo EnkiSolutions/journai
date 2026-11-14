@@ -31,12 +31,20 @@ journai --help
 journai init                 # migrations versionnées, idempotentes
 journai seed                 # fixtures synthétiques dans une base migrée vide
 journai status               # versions et totaux par table, en lecture seule
+journai selftest             # base temporaire, lecture HTTP et refus ; ne touche pas la base configurée
+# Définir JOURNAI_JETON_DEV dans l'environnement, puis :
+journai serve                # API de lecture locale uniquement (dev/test)
 ```
 
 Sans argument, `journai` exécute `init` puis `seed`. Un second semis est refusé sans modifier
 les données ; `journai seed --replace` autorise explicitement le remplacement des tables des
-fixtures. Le semis est réservé aux environnements `dev` et `test`. Les commandes `serve` et
-`selftest` ne sont pas encore livrées et relèvent des unités M3 suivantes.
+fixtures. Le semis est réservé aux environnements `dev` et `test`. `selftest` utilise une clé
+aléatoire et des fixtures isolées, sans nécessiter de secret configuré ; ses ressources sont supprimées.
+`serve` refuse `staging` et `prod` ainsi qu'une clé absente, non ASCII ou de moins de 32 caractères.
+Définir une clé de démonstration aléatoire dans `JOURNAI_JETON_DEV` uniquement dans l'environnement
+local ; ne jamais la publier. L'API accepte des jetons HMAC de démonstration en en-tête Bearer
+(contrat dans l'ADR), et ne fournit aucune écriture. Ce mécanisme n'est pas une authentification de
+production. La base doit avoir été initialisée et semée avant les lectures.
 
 La configuration utilise les défauts, `config/journai.example.json` puis
 `config/journai.json` dans le répertoire courant, ou un fichier explicite avec

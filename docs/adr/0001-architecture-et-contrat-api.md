@@ -1,18 +1,12 @@
 # ADR 0001 — Architecture de référence et contrat d’API
 
-- **État** : accepté (decisions du contrat). Le jalon M1 n’est ni livré ni validé : ce document
-  en est l’unité documentaire en cours.
+- **État** : décisions du contrat acceptées ; cette unité de démarrage ne valide aucun jalon.
 - **Portée** : F01 — Socle exécutable, architecture et migrations
 - **Preuves** : GitHub #1 · Multica JOUR-3 · PR #26
 - **Critères couverts par le contrat** : C1 documenté par le présent ADR ; C2 (format des
   fixtures, conventions de migration et de configuration) et C3 (chaîne de démarrage, checks de
-  la CI) décrits ici comme contrat, non implémentés à ce jalon
-- **Références effectives** : `journai/__init__.py` et l’en-tête de
-  `journai/migrations/0001_identite_espace_projet.sql` citent ce document. Aucune autre
-  référence n’existe dans l’arbre Git : `journai/db.py`, `journai/migrations.py` et
-  `pyproject.toml` ne le citent pas, ce dernier étant absent du dépôt.
-- **Reste à faire** : M2 (config d’exemple, migrations et fixtures exécutées, tests), M3 (CLI,
-  API, droits, validation), M4 (CI, types, démarrage vérifié)
+  la CI) décrits ici comme contrat ; les preuves locales ne valent pas acceptation des critères.
+- **Reste à faire** : écritures et règles métier des features dédiées ; CI, types et qualité en M4.
 
 ## Contexte
 
@@ -210,9 +204,7 @@ la livraison de F01 exige aussi les preuves exécutables des jalons suivants.
 ### D6 — Conventions de configuration
 
 - **Une seule source de lecture : `config/journai.example.json`** (exempt de secret, versionnée),
-  chargée par `journai/config.py`. Limite connue, traitée en M2 : ce fichier n’existe pas encore
-  alors que `config.py` le charge déjà ; le chargement et les valeurs par défaut
-  restent à vérifier en M2 ; C2 exige l’exemple versionné. Une copie locale `config/journai.json` l’écrase,
+  chargée par `journai/config.py`. L'exemple versionné est présent. Une copie locale `config/journai.json` l’écrase,
   et une variable d’environnement écrase la copie locale : priorité
   `variable d’environnement > config/journai.json > config/journai.example.json > défaut`.
 - **Variables d’environnement, préfixe `JOURNAI_`** : `JOURNAI_ENV`, `JOURNAI_DB`,
@@ -232,7 +224,7 @@ la livraison de F01 exige aussi les preuves exécutables des jalons suivants.
   jamais transmise au client. En `dev`/`test`, `serve` refuse de démarrer si cette clé est absente
   ou invalide. En `staging`/`prod`, l’API de démonstration F01 refuse de démarrer, même si la clé
   est fournie ; seule l’authentification réelle de F02 pourra y ouvrir l’API, sans repli sur ce
-  mécanisme. Ces refus restent à implémenter et à vérifier en M3.
+  mécanisme. Ces refus sont exercés par les tests locaux de démarrage et HTTP.
 
 ### D7 — Format des fixtures
 
@@ -395,8 +387,8 @@ type → plage → référence → cycle → obligation conditionnelle → clois
 | concurrence optimiste | colonne `revision` + `If-Match` D9 |
 
 Les règles de type, plage, unicité, référence, cycle, obligation, version, cloisonnement et
-concurrence constituent le contrat cible (D3 à D5), sans preuve d’exécution à M1 :
-les contrôles restent à exécuter en M2/M3. Le certificateur de revue (`scripts/review_gate.py`)
+concurrence constituent le contrat cible (D3 à D5) : les acquis structurels M2 et la lecture M3
+ne prouvent pas les écritures. Le certificateur de revue (`scripts/review_gate.py`)
 vérifie un certificat lié au SHA ; il ne prouve pas l’implémentation de ces règles.
 
 ### D11 — Checks prévus pour la CI
@@ -407,27 +399,19 @@ l’ordre : `ruff check` + `ruff format --check` (qualité), `mypy` et `pyright`
 (chaîne de démarrage), `pip-audit` (dépendances, aucune dépendance d’exécution). Le flux
 `review-gate.yml` reste dédié au certificat de revue et à la validation du SHA.
 
-## État d’exécution du socle au checkpoint courant de M1
+## État d’exécution du socle — unité M3-STARTUP-1
 
-Le contrat ci-dessus est plus large que le dépôt. Les lignes ci-dessous décrivent l’arbre Git
-constaté par `git ls-tree -r HEAD` au checkpoint courant. La présence d’un fichier dans l’arbre
-ne vaut ni intégration, ni exécution, ni validation.
+Le contrat est plus large que les preuves : M2 apporte migrations `0001`–`0007`, fixtures,
+configuration sans secret et paquet installable ; les limites des acquis sont détaillées dans
+R1–R5 ci-dessous. La lecture M3 comprend `api.py`, `auth.py`, `queries.py` et `validation.py` ;
+elle ne livre pas les écritures métier. `init`, `seed`, `status`, `selftest` et `serve` sont
+exercés localement, y compris depuis le wheel installé hors checkout. Le selftest initialise sa
+propre base temporaire, lit réellement par HTTP et vérifie des refus. Les six tests HTTP restent
+dans `tests/test_api.py` ; `tests/test_http.py` n'existe pas.
 
-| Élément du contrat | Dans l’arbre Git au checkpoint | Preuve à produire (jalon) |
-|---|---|---|
-| `journai/config.py`, `db.py`, `migrations.py`, `seed.py` | présents ; import groupé, application des migrations et exécution non démontrées | chaîne importée, migrations appliquées et exécution (M2) |
-| 5 migrations `0001`–`0005`, 39 instructions `CREATE TABLE` | présentes dans l’arbre ; conformité D3/D4 non vérifiée | `tests/test_socle.py` à écrire et exécuter (M2) |
-| `journai/fixtures/espace-a.json` (1156 lignes), `espace-b.json` (284 lignes) | présentes ; format D7 et clé `env` non vérifiés | contrôle D7 et chargement des fixtures (M2) |
-| `.gitignore`, `.env.example` | `.gitignore` présent ; `.env.example` absente | fournir un exemple sans valeur de secret et vérifier les règles Git (M2) |
-| `config/journai.example.json` | absent | à créer (M2, exigence C2) |
-| `pyproject.toml` (3.12, dépendances vides, `journai` en commande) | absent | à créer (M2) |
-| `python -m journai`, `cli.py`, `init`, `seed`, `status`, `selftest` | absents | à créer (M3) |
-| `api.py`, `auth.py`, `rights.py`, `validate.py` (D9, D10) | absents | à créer (M3) |
-| `.github/workflows/ci.yml`, `requirements-dev.txt`, `pyrightconfig.json` (D11) | absents ; seul `review-gate.yml` existe dans l’arbre, son exécution n’est pas prouvée ici | à créer puis exécuter par la CI (M4, exigence C3) |
-
-`scripts/review_gate.py` et `scripts/test_review_gate.py` existent dans le dépôt (flux de
-livraison commun) et ne sont pas un livrable de F01. Aucun test de M2 n’a été exécuté à ce
-checkpoint : M1 est un jalon documentaire en cours, ni livré ni validé.
+Ces exécutions ne valent pas validation de M3, C2, C3 ou F01. CI, types et qualité restent M4 ;
+le flux de revue commun ne les remplace pas. Les décisions et les contrôles futurs ci-dessous
+ne sont pas des écritures déjà livrées.
 
 ## Traçabilité critère → fonctionnalité → invariant → jalon
 | Critère réel de F01 | Décision | Règle visée (intitulé réel de `docs/specification.md`) | Feature responsable de la mise en œuvre | Contrôle attendu (base, API, tests) | Jalon de preuve |
@@ -450,25 +434,25 @@ checkpoint : M1 est un jalon documentaire en cours, ni livré ni validé.
 | C2 | D2, D3, D6, D7, D8 | Migrations versionnées, fixtures synthétiques, configuration d’exemple sans secrets et commandes de lancement | F01 (socle) ; F02 et F03 (bénéficiaires) | Appliquer les migrations et charger les fixtures (M2), puis exécuter les commandes de lancement D8 (M3) | M2 et M3 |
 | C3 | D1, D8, D11 | « La CI exécute les contrôles de typage, de qualité et les tests utiles ; le parcours de démarrage est vérifié » | F01 (CI) ; autres features bénéficiaires | CI : typage, qualité, tests et selftest | M4 : job ci.yml exécuté et journal conservé |
 
-La colonne « Contrôle attendu » liste des preuves à produire, pas des preuves obtenues : aux
-jalons M2 à M4, ces contrôles restent à exécuter, comme l’indique la section « État d’exécution
-du socle ». Le tableau ne nomme aucun invariant chiffré : il relie un critère réel de F01 à une
-règle identifiable de la spécification, à la décision qui l’exprime, à la feature qui la met en
-œuvre et à la vérification attendue.
+La colonne « Contrôle attendu » décrit les obligations, non leur acceptation. Les preuves
+structurelles M2 et la lecture M3 ne prouvent pas les comportements d'écriture : UUID serveur,
+audit, archivage et conflits relèvent de F22 ; immutabilité et révisions des versions de F05 ;
+exécution des opérations de F08 ; cycles d'actions de F11/F13. Priorité courante, historique,
+immutabilité, remplacement au même couple et espace et absence de cycles relèvent de F16 ;
+conservation des estimations et avis relève de F14/F15. Ces obligations demeurent ouvertes même
+si les tests structurels ou de lecture réussissent. C3, CI, types et qualité restent M4.
 
 | Jalon | Nature | Contenu | Preuve associée |
 |---|---|---|---|
-| M1 | contrat documentaire | le présent ADR : critères C1–C3, décisions D1–D11, traçabilité ci-dessus | relecture de ce document ; M1 en cours, aucune preuve d’exécution |
-| M2 | fichiers à créer, puis exécuter | `config/journai.example.json`, migrations `0001`–`0005`, fixtures `espace-a`/`espace-b`, `pyproject.toml`, `tests/test_socle.py` | migrations appliquées et fixtures chargées par une exécution réelle des tests |
+| M1 | contrat documentaire | le présent ADR : critères C1–C3, décisions D1–D11, traçabilité ci-dessus | relecture documentaire, distincte des preuves d’exécution ultérieures |
+| M2 | socle structurel | configuration, migrations `0001`–`0007`, fixtures et paquet | preuves partielles et limites explicitées en R1–R5 |
 | M3 | exécution à prouver | chaîne de démarrage et CLI (D8), API de lecture (D9), droits et validation (D10) | appels CLI et API exécutés, droits et validations vérifiés par les tests |
 | M4 | exécution à prouver | CI, typage, qualité, tests, démarrage vérifié (D11) | job `ci.yml` exécuté et son journal |
 | M5 | revue de livraison | Après M4, sortir la PR complète du brouillon puis soumettre son dernier SHA à CodeRabbit | Approbation CodeRabbit sans remarque ouverte ni erreur sur ce SHA, puis Reviewer et certificat justifiant chaque ligne avec scripts/review_gate.py |
 
-Un nom de fichier cité dans ce tableau n’est pas une preuve : la section « État d’exécution du
-socle » sépare les fichiers présents dans l’arbre Git des contrôles non exécutés. M1 ne revendique
-que le contrat documentaire de C1 : le critère C1 global, M1 et F01 ne sont pas validés à ce
-checkpoint. Les jalons restent séquentiels : M4 précède le retrait du brouillon de la PR #26 et M5
-désigne la revue de la PR complète après M4, jamais le checkpoint d’un jalon isolé.
+Un nom de fichier cité dans ce tableau n’est pas une preuve. Cette unité ne valide aucun jalon
+ni F01 ; le jugement de fin de M3 appartient à l'Orchestrateur. M4 précède le retrait du brouillon
+de la PR #26 et M5 désigne la revue de la PR complète, jamais le checkpoint d’une unité isolée.
 
 ## État partiel des preuves M2 (R1–R5)
 
@@ -518,9 +502,9 @@ R5 — D1/C2 : packaging et contrôles intégrés base/fixtures. Acquis borné :
 Depuis ce texte du plan, `test_packaging_socle` vérifie le wheel installé avec migrations et
 semis ; `test_socle_integration` utilise configuration, base, migrations et deux fixtures sur
 disque, puis contrôle journal et empreintes, idempotence, refus du second semis sans changement,
-PRAGMA, intégrité et réouverture. Ces contrôles intégrés ne prouvent ni les écritures serveur ni
-le démarrage CLI/API et la CI, qui restent respectivement aux jalons M3/M4. Les obligations et
-critères restent ouverts même lorsque les tests structurels réussissent.
+PRAGMA, intégrité et réouverture. Les tests de démarrage M3 couvrent désormais la CLI et la
+lecture HTTP, mais pas les écritures serveur ; la CI reste M4. Les obligations et critères restent
+ouverts même lorsque les tests structurels réussissent.
 
 ## Non objectifs de F01
 

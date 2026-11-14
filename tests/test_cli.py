@@ -4,9 +4,13 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from contextlib import closing
 from pathlib import Path
+from unittest.mock import patch
+
+from journai import cli
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,6 +68,18 @@ class CliTests(unittest.TestCase):
         env = {key: value for key, value in self.env.items() if key != "JOURNAI_DB"}
         self.assertEqual(self.run_cli("--config", str(config), env=env).stdout, "")
         self.assertIn("espace: 2", self.run_cli("--config", str(config), "status", env=env).stdout)
+
+    def test_selftest_failure_cleans_resources_and_restores_key(self):
+        threads = set(threading.enumerate())
+        with patch.dict(os.environ, {"JOURNAI_JETON_DEV": "original-secret"}), \
+             patch("journai.cli.tempfile.gettempdir", return_value=str(self.root)), \
+             patch("http.client.HTTPConnection.request", side_effect=OSError("simulated failure")):
+            with self.assertRaisesRegex(OSError, "simulated failure"):
+                cli.selftest()
+            self.assertEqual(os.environ["JOURNAI_JETON_DEV"], "original-secret")
+        self.assertFalse(list(self.root.glob("journai-selftest-*")))
+        self.assertFalse(self.database.exists())
+        self.assertEqual(set(threading.enumerate()), threads)
 
     def test_errors_do_not_create_or_modify_data(self):
         self.run_cli("status", success=False)

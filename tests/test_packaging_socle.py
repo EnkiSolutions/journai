@@ -1,11 +1,17 @@
+import http.client
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
+from contextlib import closing
 from pathlib import Path
 from zipfile import ZipFile
+
+from test_startup import KEY, PROJECT, token
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -73,6 +79,36 @@ class PackagingSocleTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("espace: 2", result.stdout)
             self.assertIn("0007", result.stdout)
+            result = subprocess.run([str(console), "selftest"], cwd=root, env=console_env,
+                                    text=True, capture_output=True, encoding="utf-8", timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Selftest réussi", result.stdout)
+            with socket.socket() as sock:
+                sock.bind(("127.0.0.1", 0))
+                port = sock.getsockname()[1]
+            process = subprocess.Popen([str(console), "serve"], cwd=root,
+                                       env={**console_env, "JOURNAI_JETON_DEV": KEY,
+                                            "JOURNAI_PORT": str(port)},
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            try:
+                deadline = time.monotonic() + 10
+                while True:
+                    try:
+                        with closing(http.client.HTTPConnection("127.0.0.1", port, timeout=1)) as client:
+                            client.request("GET", "/api/v1/projet", headers={"Authorization": "Bearer " + token()})
+                            response = client.getresponse()
+                            body = response.read().decode("utf-8")
+                            self.assertEqual(response.status, 200)
+                            self.assertIn(PROJECT, body)
+                        break
+                    except (ConnectionRefusedError, ConnectionResetError):
+                        if process.poll() is not None or time.monotonic() >= deadline:
+                            self.fail("console installée non prête")
+                        time.sleep(0.05)
+            finally:
+                process.terminate()
+                stdout, stderr = process.communicate(timeout=10)
+                self.assertNotIn(KEY, stdout + stderr)
 
 
 INSTALLED_CHECK = r'''
