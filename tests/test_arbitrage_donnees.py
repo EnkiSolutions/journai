@@ -118,12 +118,25 @@ class ArbitrageDonneesTests(unittest.TestCase):
         first.update(changes)
         expected[table] = [(*first.values(), 1), (*neighbor.values(), 1)]
         self.assertEqual(self.snapshots(), expected)
+        numeric = ('charge_min_h', 'charge_probable_h', 'charge_max_h',
+                   'cout_min', 'cout_probable', 'cout_max')
+        self.assertEqual(self.update(table, first['id'], dict.fromkeys(numeric)).rowcount, 1)
+        first.update(dict.fromkeys(numeric))
+        expected[table] = [(*first.values(), 1), (*neighbor.values(), 1)]
+        self.assertEqual(self.snapshots(), expected)
+        for column in numeric:
+            for value in (0, 2.5, None):
+                with self.subTest(column=column, value=value):
+                    self.assertEqual(self.update(table, first['id'], {column: value}).rowcount, 1)
+                    first[column] = value
+                    expected[table] = [(*first.values(), 1), (*neighbor.values(), 1)]
+                    self.assertEqual(self.snapshots(), expected)
         cases = [
             ('action absente', {'action_id': uid(5, 99)}, FK),
             ('auteur absent', {'auteur_id': uid(1, 99)}, FK),
             ('action hors espace', {'action_id': uid(5, 3)}, FK),
             ('espace incohérent', {'espace_id': uid(2, 2)}, FK),
-            ('identifiant pris', {'id': neighbor['id']}, 'SQLITE_CONSTRAINT_PRIMARYKEY'),
+            ('identifiant pris', {'id': neighbor['id']}, 'SQLITE_CONSTRAINT_UNIQUE'),
             ('révision', {'revision': 0}, CHECK),
             ('devise courte', {'devise': 'EU'}, CHECK),
             ('devise longue', {'devise': 'EURO'}, CHECK),
@@ -153,19 +166,25 @@ class ArbitrageDonneesTests(unittest.TestCase):
                         impact_attendu='faible', confiance='moyenne', justification='Autre avis')
         other_project = dict(first, id=uid(7, 3), projet_id=uid(4, 2), auteur_id=uid(1, 3),
                              justification='Avis projet deux')
-        for row in (first, neighbor, other_project):
+        other_space = dict(first, id=uid(7, 4), action_id=uid(5, 3), projet_id=uid(4, 4),
+                           espace_id=uid(2, 2), justification='Avis second espace')
+        rows = (first, neighbor, other_project, other_space)
+        for row in rows:
             self.assertEqual(self.insert(table, row).rowcount, 1)
-        expected[table] = [(*row.values(), 1) for row in (first, neighbor, other_project)]
+        expected[table] = [(*row.values(), 1) for row in rows]
         self.assertEqual(self.snapshots(), expected)
         self.assertEqual(self.update(table, first['id'], {'action_id': uid(5, 2), 'projet_id': uid(4, 2)}).rowcount, 1)
         first.update(action_id=uid(5, 2), projet_id=uid(4, 2))
-        expected[table] = [(*row.values(), 1) for row in (first, neighbor, other_project)]
+        expected[table] = [(*row.values(), 1) for row in rows]
         self.assertEqual(self.snapshots(), expected)
         changes = dict(importance='moyenne', impact_attendu='forte', confiance='faible', justification='Avis révisé')
         self.assertEqual(self.update(table, first['id'], changes).rowcount, 1)
         first.update(changes)
-        expected[table] = [(*row.values(), 1) for row in (first, neighbor, other_project)]
+        expected[table] = [(*row.values(), 1) for row in rows]
         self.assertEqual(self.snapshots(), expected)
+        self.refusal_cases(table, other_space, other_space['id'], [
+            ('couple second espace, espace déclaré incohérent', {'espace_id': uid(2, 1)}, FK),
+        ])
         cases = [
             ('couple absent, objets présents', {'projet_id': uid(4, 3)}, FK),
             ('action absente', {'action_id': uid(5, 99)}, FK),
@@ -174,7 +193,7 @@ class ArbitrageDonneesTests(unittest.TestCase):
             ('action hors espace, couple existant', {'action_id': uid(5, 3), 'projet_id': uid(4, 4)}, FK),
             ('projet hors espace', {'projet_id': uid(4, 4)}, FK),
             ('espace incohérent, couple existant', {'espace_id': uid(2, 2)}, FK),
-            ('identifiant pris', {'id': neighbor['id']}, 'SQLITE_CONSTRAINT_PRIMARYKEY'),
+            ('identifiant pris', {'id': neighbor['id']}, 'SQLITE_CONSTRAINT_UNIQUE'),
             ('révision', {'revision': 0}, CHECK),
         ]
         for column in ('importance', 'impact_attendu', 'confiance'):
