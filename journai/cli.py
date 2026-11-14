@@ -52,20 +52,21 @@ def selftest() -> None:
         payload = json.dumps({"sub": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
                               "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
                               "iat": now, "exp": now + 300}, separators=(",", ":")).encode()
-        encode = lambda value: base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
+        def encode(value: bytes) -> str:
+            return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
         signed = "v1." + encode(payload)
         token = signed + "." + encode(hmac.digest(key.encode(), signed.encode(), hashlib.sha256))
         thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01})
         try:
             thread.start()
-            for path, authorization, expected in (
+            for url, authorization, expected in (
                 ("/api/v1/projet", "Bearer " + token, 200),
                 ("/api/v1/projet", None, 401),
                 ("/api/v1/projet", "Bearer invalid", 401),
                 ("/api/v1/projet/028ef5b1-354b-5ca3-b352-b177b47a4852", "Bearer " + token, 403),
             ):
-                with closing(http.client.HTTPConnection(*server.server_address, timeout=3)) as client:
-                    client.request("GET", path, headers={"Authorization": authorization} if authorization else {})
+                with closing(http.client.HTTPConnection(config.host, server.server_address[1], timeout=3)) as client:
+                    client.request("GET", url, headers={"Authorization": authorization} if authorization else {})
                     response = client.getresponse()
                     body = response.read()
                     if response.status != expected or (expected == 200 and not json.loads(body).get("data")):

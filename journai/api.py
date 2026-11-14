@@ -76,7 +76,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                  405: ("methode_interdite", "Méthode non autorisée"),
                  500: ("erreur_interne", "Une erreur interne est survenue")}
         code, message = codes.get(status, codes[400])
-        error = {"code": code, "message": message}
+        error: dict[str, str | list[str]] = {"code": code, "message": message}
         if fields:
             error["champs"] = [field if field in SAFE_FIELDS else "parametre" for field in fields]
         elif status == 400:

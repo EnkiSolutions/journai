@@ -118,11 +118,11 @@ def seeded(connection: sqlite3.Connection, fixtures_dir: str | Path = FIXTURES_D
             # Rompre les références circulaires nullable décrites par les updates avant suppression.
             for table in counts:
                 info = list(connection.execute("SELECT * FROM pragma_table_info(?)", (table,)))
-                nullable = {row[1] for row in info if not row[3] and not row[5]}
+                nullable_columns = {row[1] for row in info if not row[3] and not row[5]}
                 foreign = list(connection.execute("SELECT * FROM pragma_foreign_key_list(?)", (table,)))
                 updated = {key for update in fixture["updates"] if update["table"] == table
                            for key in update["set"]}
-                clear = nullable & {row[3] for row in foreign if row[2] == table or row[3] in updated}
+                clear = nullable_columns & {row[3] for row in foreign if row[2] == table or row[3] in updated}
                 if clear:
                     assignments = ", ".join(f"{_quote(key)} = NULL" for key in sorted(clear))
                     connection.execute(f"UPDATE {_quote(table)} SET {assignments}")

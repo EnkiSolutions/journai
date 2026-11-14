@@ -22,6 +22,17 @@ python -m unittest discover -s scripts -p 'test_*.py' -v
 python scripts/review_gate.py --pr NUMERO
 ```
 
+## Contrôles locaux de développement (Python 3.12 ou plus)
+
+```sh
+python -m pip install -e '.[dev]'
+python -m ruff check journai
+python -m mypy --check-untyped-defs journai
+python -m unittest discover -s tests -p 'test_*.py' -v
+python -m unittest discover -s scripts -p 'test_*.py' -v
+python -m journai selftest
+```
+
 ## Socle local (Python 3.12 ou plus)
 
 Installer le paquet avec `python -m pip install .`, puis utiliser `journai` ou `python -m journai` :

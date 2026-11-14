@@ -15,6 +15,7 @@ journai.egg-info/PKG-INFO
 journai.egg-info/SOURCES.txt
 journai.egg-info/dependency_links.txt
 journai.egg-info/entry_points.txt
+journai.egg-info/requires.txt
 journai.egg-info/top_level.txt
 journai/fixtures/espace-a.json
 journai/fixtures/espace-b.json
