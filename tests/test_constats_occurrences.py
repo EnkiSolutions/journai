@@ -100,3 +100,35 @@ class ConstatsOccurrencesTests(unittest.TestCase):
                            description='Description révisée', source='Source révisée',
                            observe_le='2026-01-04T10:00:00+00:00', niveau_confiance='forte')
         snapshot()
+
+        cases = [
+            ('occurrence hors espace', {'occurrence_contact_id': uid(10, 3)}, 'FOREIGN KEY constraint failed'),
+            ('espace déclaré incohérent', {'espace_id': uid(2, 2)}, 'FOREIGN KEY constraint failed'),
+            ('occurrence absente', {'occurrence_contact_id': uid(10, 99)}, 'FOREIGN KEY constraint failed'),
+            ('auteur absent', {'auteur_id': uid(1, 99)}, 'FOREIGN KEY constraint failed'),
+            ('source NULL', {'source': None}, 'NOT NULL constraint failed: constat.source'),
+            ('date NULL', {'observe_le': None}, 'NOT NULL constraint failed: constat.observe_le'),
+            ('type inconnu', {'type_constat': 'inconnu'},
+             "CHECK constraint failed: type_constat IN ('fait_valide', 'hypothese')"),
+            ('confiance inconnue', {'niveau_confiance': 'inconnue'},
+             "CHECK constraint failed: niveau_confiance IN ('faible', 'moyenne', 'forte')"),
+            ('statut inconnu', {'statut_validation': 'inconnu'},
+             "CHECK constraint failed: statut_validation IN ('a_valider', 'valide', 'rejete')"),
+        ]
+        for number, (label, changes, error) in enumerate(cases, 4):
+            with self.subTest(case=label, operation='INSERT'):
+                with self.assertRaisesRegex(sqlite3.IntegrityError, re.escape(error)):
+                    insert({**records[0], **changes, 'id': uid(13, number)})
+                snapshot()
+            with self.subTest(case=label, operation='UPDATE'):
+                assignments = ', '.join(f'{column} = ?' for column in changes)
+                with self.assertRaisesRegex(sqlite3.IntegrityError, re.escape(error)):
+                    c.execute(f'UPDATE constat SET {assignments} WHERE id = ?',
+                              (*changes.values(), uid(13, 1)))
+                snapshot()
+
+        c.commit()
+        self.close()
+        self.connection = db.connect(self.path)
+        snapshot()
+        self.assertEqual(db.integrity_problems(self.connection), [])
