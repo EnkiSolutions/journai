@@ -70,6 +70,7 @@ class MigrationTests(unittest.TestCase):
         self.connection.execute("CREATE TABLE schema_migration (version TEXT PRIMARY KEY, "
                                 "applique_le TEXT, fichier TEXT)")
         self.connection.execute("INSERT INTO schema_migration VALUES ('0001', 'old', 'old.sql')")
+        self.connection.commit()
         self.script("0002_next.sql", "CREATE TABLE next_table (id INTEGER);")
         with self.assertRaisesRegex(migrations.MigrationError, "hérité.*empreinte"):
             migrations.migrate(self.connection, self.scripts)
@@ -82,6 +83,7 @@ class MigrationTests(unittest.TestCase):
         self.connection.execute("CREATE TABLE schema_migration (version TEXT PRIMARY KEY, "
                                 "applique_le TEXT, fichier TEXT, empreinte_sha256 TEXT)")
         self.connection.execute("INSERT INTO schema_migration VALUES ('0001', 'old', 'first.sql', NULL)")
+        self.connection.commit()
         self.script("0001_first.sql", "SELECT 1;")
         with self.assertRaisesRegex(migrations.MigrationError, "empreinte.*0001"):
             migrations.migrate(self.connection, self.scripts)

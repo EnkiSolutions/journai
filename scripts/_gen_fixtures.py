@@ -5,6 +5,8 @@ Contrôle à l'émission : clés inconnues et valeurs hors énumération du sch�
 import json
 import re
 import sys
+import tempfile
+from contextlib import closing
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -17,9 +19,9 @@ T1 = "2026-02-10T09:00:00+00:00"
 T2 = "2026-03-02T10:00:00+00:00"
 ST = "systeme"
 
-conn = db.connect(":memory:")
-migrations.migrate(conn, SCHEMA)
-COLS = {t: set(db.column_names(conn, t)) for t in db.table_names(conn)}
+with tempfile.TemporaryDirectory() as directory, closing(db.connect(Path(directory) / "schema.db")) as conn:
+    migrations.migrate(conn, SCHEMA)
+    COLS = {t: set(db.column_names(conn, t)) for t in db.table_names(conn)}
 SQL = "\n".join(p.read_text(encoding="utf-8") for p in sorted(SCHEMA.glob("*.sql")))
 ENUM = {m[0]: set(m[1].split(", ")) for m in
         re.findall(r"CHECK \((\w+) IN \(([^)]*)\)\)", SQL)}

@@ -96,7 +96,6 @@ def migrate(connection: sqlite3.Connection, schema_dir: str | Path) -> list[str]
             if re.match(r"\s*(?:(?:--[^\n]*(?:\n|$)|/\*.*?\*/)\s*)*"
                         r"(?:BEGIN|COMMIT|END|ROLLBACK|SAVEPOINT|RELEASE)\b", sql, re.I | re.S):
                 raise MigrationError(f"{path.name} contient une commande de transaction interdite")
-        connection.execute("BEGIN")
         try:
             for sql in instructions:
                 connection.execute(sql)

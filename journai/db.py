@@ -8,18 +8,24 @@ from pathlib import Path
 def connect(db_path: str | Path, *, create: bool = True) -> sqlite3.Connection:
     """Ouvre la base, crée les dossiers, active les invariants structurels."""
     path = Path(db_path)
-    if str(path) != ":memory:":
-        if create:
-            path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(path)
-    else:
-        connection = sqlite3.connect(":memory:")
-    connection.row_factory = sqlite3.Row
-    # Transactions pilotées par le code (migrations, semis) : pas de BEGIN implicite de Python.
-    connection.isolation_level = None
-    connection.execute("PRAGMA foreign_keys = ON")
-    connection.execute("PRAGMA recursive_triggers = ON")
-    connection.execute("PRAGMA journal_mode = WAL")
+    if str(path) != ":memory:" and create:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(path, autocommit=True)
+    try:
+        connection.row_factory = sqlite3.Row
+        for name, setting, expected in (
+            ("foreign_keys", "ON", 1),
+            ("recursive_triggers", "ON", 1),
+            ("journal_mode", "WAL", "wal"),
+        ):
+            connection.execute(f"PRAGMA {name} = {setting}")
+            row = connection.execute(f"PRAGMA {name}").fetchone()
+            if row is None or row[0] != expected:
+                raise RuntimeError(f"PRAGMA {name} incorrect : {row}")
+        connection.autocommit = False
+    except Exception as exc:
+        connection.close()
+        raise RuntimeError(f"initialisation SQLite refusée : {exc}") from exc
     return connection
 
 

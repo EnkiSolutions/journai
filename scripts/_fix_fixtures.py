@@ -2,6 +2,8 @@
 import json
 import re
 import sys
+import tempfile
+from contextlib import closing
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -12,9 +14,9 @@ SCHEMA = ROOT / "journai" / "migrations"
 FIX = ROOT / "journai" / "fixtures"
 T0 = "2026-01-05T09:00:00+00:00"
 
-conn = db.connect(":memory:")
-migrations.migrate(conn, SCHEMA)
-COLS = {t: set(db.column_names(conn, t)) for t in db.table_names(conn)}
+with tempfile.TemporaryDirectory() as directory, closing(db.connect(Path(directory) / "schema.db")) as conn:
+    migrations.migrate(conn, SCHEMA)
+    COLS = {t: set(db.column_names(conn, t)) for t in db.table_names(conn)}
 SQL = "\n".join(p.read_text(encoding="utf-8") for p in sorted(SCHEMA.glob("*.sql")))
 ENUM = {}
 for block, body in re.findall(r"CREATE TABLE (\w+) \((.*?)\n\);", SQL, re.S):

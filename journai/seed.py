@@ -66,7 +66,6 @@ def seeded(connection: sqlite3.Connection, fixtures_dir: str | Path = FIXTURES_D
         if int(filled["n"]):
             raise SeedError(f"table {table} non vide : utiliser --replace pour la recharger")
         counts[table] = len(rows)
-    connection.execute("BEGIN")
     try:
         if replace:
             for entry in reversed(tables):
@@ -86,10 +85,12 @@ def seeded(connection: sqlite3.Connection, fixtures_dir: str | Path = FIXTURES_D
         problems = db.integrity_problems(connection)
         if problems:
             raise SeedError(f"fixtures refusées par l'intégrité : {problems[:3]}")
-    except (sqlite3.Error, SeedError) as exc:
+        connection.commit()
+    except Exception as exc:
         connection.rollback()
-        raise SeedError(f"semis refusé : {exc}") from exc
-    connection.commit()
+        if isinstance(exc, (sqlite3.Error, SeedError)):
+            raise SeedError(f"semis refusé : {exc}") from exc
+        raise
     return {table: n for table, n in counts.items()}
 
 
