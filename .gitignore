@@ -9,5 +9,6 @@ __pycache__/
 *.pyc
 .venv/
 .multica/
+config/journai.json
 .pi/sessions/
 *.local

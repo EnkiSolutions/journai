@@ -1,0 +1,9 @@
+{
+  "env": "dev",
+  "db": "var/journai.db",
+  "host": "127.0.0.1",
+  "port": 8000,
+  "log_level": "INFO",
+  "schema_dir": "journai/migrations",
+  "cors_origin": ""
+}
