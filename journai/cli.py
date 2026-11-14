@@ -20,6 +20,7 @@ def main(argv: list[str] | None = None) -> int:
     seed_parser = commands.add_parser("seed", help="charger les fixtures synthétiques")
     seed_parser.add_argument("--replace", action="store_true", help="remplacer les données des fixtures")
     commands.add_parser("status", help="afficher les versions et les totaux par table")
+    commands.add_parser("serve", help="servir l'API de lecture locale")
     args = parser.parse_args(argv)
 
     try:
@@ -28,6 +29,10 @@ def main(argv: list[str] | None = None) -> int:
         if not isinstance(level, int):
             raise ValueError("niveau de journalisation invalide")
         logging.basicConfig(stream=sys.stdout, level=level, format="%(asctime)s %(levelname)s %(message)s")
+        if args.command == "serve":
+            from journai.api import serve
+            serve(config)
+            return 0
         schema_dir = config.schema_dir
         if schema_dir == Path(DEFAULT_SCHEMA_DIR):
             schema_dir = Path(migrations.__file__).parent / "migrations"
