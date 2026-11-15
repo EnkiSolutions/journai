@@ -432,8 +432,10 @@ ni revue Reviewer.
 ## État d’exécution du socle — unité M4-CI-CONTRACT-1
 
 Le contrat est plus large que les preuves : M2 apporte migrations `0001`–`0007`, fixtures,
-configuration sans secret et paquet installable ; la migration `0008` est également présente au
-SHA courant. Les limites des acquis sont détaillées dans R1–R5 ci-dessous. La lecture M3 comprend
+configuration sans secret et paquet installable ; les migrations `0008` et `0009` sont également
+présentes. `0009` refuse les bornes d'estimation inversées et les mesures non numériques ;
+`tests/test_integrite_numerique.py` couvre migration, conservation et refus en écriture. Les limites
+des acquis sont détaillées dans R1–R5 ci-dessous. La lecture M3 comprend
 `api.py`, `auth.py`, `queries.py` et `validation.py` ;
 elle ne livre pas les écritures métier. `init`, `seed`, `status`, `selftest` et `serve` sont
 exercés localement, y compris depuis le wheel installé hors checkout. Le selftest initialise sa

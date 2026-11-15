@@ -21,6 +21,10 @@ class CommentairesEspaceTests(unittest.TestCase):
         self.old_schema.mkdir()
         for file in SCHEMA.glob('000[1-7]_*.sql'):
             shutil.copyfile(file, self.old_schema / file.name)
+        self.schema_8 = root / 'schema_8'
+        shutil.copytree(self.old_schema, self.schema_8)
+        for file in SCHEMA.glob('0008_*.sql'):
+            shutil.copyfile(file, self.schema_8 / file.name)
         self.connection = db.connect(self.path)
         self.addCleanup(lambda: self.connection.close())
         migrations.migrate(self.connection, self.old_schema)
@@ -45,12 +49,12 @@ class CommentairesEspaceTests(unittest.TestCase):
         self.connection.execute("INSERT INTO reference_commentaire VALUES ('enfant')")
         self.connection.commit()
         before = [tuple(row) for row in self.connection.execute('SELECT * FROM commentaire ORDER BY id')]
-        self.assertEqual(migrations.migrate(self.connection, SCHEMA), ['0008'])
+        self.assertEqual(migrations.migrate(self.connection, self.schema_8), ['0008'])
         self.connection.close()
         self.connection = db.connect(self.path)
         self.assertEqual([tuple(row) for row in self.connection.execute('SELECT * FROM commentaire ORDER BY id')], before)
         self.assertEqual(self.connection.execute('SELECT id FROM reference_commentaire').fetchone()[0], 'enfant')
-        self.assertEqual(migrations.migrate(self.connection, SCHEMA), [])
+        self.assertEqual(migrations.migrate(self.connection, self.schema_8), [])
         self.assertEqual(db.integrity_problems(self.connection), [])
         self.insert('sans_parent', 'b')
         self.insert('valide', 'a', 'parent')
@@ -67,7 +71,7 @@ class CommentairesEspaceTests(unittest.TestCase):
         self.assertEqual(self.connection.execute('PRAGMA foreign_keys').fetchone()[0], 1)
 
     def test_deferred_parent_insert_and_id_change_are_checked(self):
-        migrations.migrate(self.connection, SCHEMA)
+        migrations.migrate(self.connection, self.schema_8)
         c = self.connection
         c.execute('PRAGMA defer_foreign_keys = ON')
         self.insert('enfant', 'a', 'futur')
@@ -85,7 +89,7 @@ class CommentairesEspaceTests(unittest.TestCase):
         self.connection.commit()
         before = list(self.connection.iterdump())
         with self.assertRaisesRegex(migrations.MigrationError, 'commentaires_espaces_incoherents'):
-            migrations.migrate(self.connection, SCHEMA)
+            migrations.migrate(self.connection, self.schema_8)
         self.connection.close()
         self.connection = db.connect(self.path)
         self.assertEqual(list(self.connection.iterdump()), before)

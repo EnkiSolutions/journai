@@ -52,9 +52,9 @@ class CliTests(unittest.TestCase):
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM espace").fetchone()[0], 2)
         before = self.snapshot()
         status = self.run_cli("status").stdout
-        self.assertIn("0001, 0002, 0003, 0004, 0005, 0006, 0007, 0008", status)
+        self.assertIn("0001, 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009", status)
         self.assertIn("espace: 2", status)
-        self.assertIn("schema_migration: 8", status)
+        self.assertIn("schema_migration: 9", status)
         self.assertEqual(self.snapshot(), before)
         self.assertIn("non vide", self.run_cli("seed", success=False).stderr)
         self.assertEqual(self.snapshot(), before)

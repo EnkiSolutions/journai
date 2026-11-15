@@ -24,6 +24,7 @@ MIGRATIONS = {
     "0003_operation_ressource_constat.sql", "0004_action_arbitrage.sql",
     "0005_collaboration_pilotage.sql", "0006_versions_courantes.sql",
     "0007_cles_occurrences.sql", "0008_commentaires_espace.sql",
+    "0009_integrite_numerique.sql",
 }
 FIXTURES = {"espace-a.json", "espace-b.json"}
 
@@ -112,7 +113,7 @@ class PackagingSocleTests(unittest.TestCase):
             empty.mkdir()
             module_env = {**env, "PYTHONPATH": str(target), "PYTHONUTF8": "1"}
             module_db = root / "module.db"
-            for expected in ("0008", "aucune (déjà à jour)"):
+            for expected in ("0009", "aucune (déjà à jour)"):
                 result = subprocess.run(
                     [sys.executable, "-m", "journai.migrations", "--db", str(module_db)],
                     cwd=empty, env=module_env, text=True, capture_output=True, encoding="utf-8",
@@ -153,7 +154,7 @@ class PackagingSocleTests(unittest.TestCase):
                                     capture_output=True, encoding="utf-8")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("espace: 2", result.stdout)
-            self.assertIn("0008", result.stdout)
+            self.assertIn("0009", result.stdout)
             result = subprocess.run([str(console), "selftest"], cwd=root, env=console_env,
                                     text=True, capture_output=True, encoding="utf-8", timeout=30)
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -201,7 +202,7 @@ import journai
 package = installed / "journai"
 for module in (journai, config, db, migrations, seed, validation):
     assert Path(module.__file__).resolve().is_relative_to(package.resolve()), module.__file__
-versions = [f"{number:04}" for number in range(1, 9)]
+versions = [f"{number:04}" for number in range(1, 10)]
 connection = db.connect(database)
 try:
     assert migrations.migrate(connection, package / "migrations") == versions

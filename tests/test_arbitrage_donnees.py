@@ -25,7 +25,7 @@ class ArbitrageDonneesTests(unittest.TestCase):
         self.addCleanup(self.close)
         c = self.connection
         self.assertEqual(c.execute('PRAGMA foreign_keys').fetchone()[0], 1)
-        self.assertEqual(migrations.migrate(c, SCHEMA), [f'{n:04}' for n in range(1, 9)])
+        self.assertEqual(migrations.migrate(c, SCHEMA), [f'{n:04}' for n in range(1, 10)])
         for number in (1, 2, 3):
             c.execute('INSERT INTO utilisateur (id, nom_affiche, email, cree_le) VALUES (?, ?, ?, ?)',
                       (uid(1, number), f'Utilisateur {number}', f'test{number}@example.invalid', NOW))
@@ -149,6 +149,8 @@ class ArbitrageDonneesTests(unittest.TestCase):
             cases.extend([
                 (f'{prefix} probable inférieur au minimum', dict(zip(columns, (2, 1, 3))), CHECK),
                 (f'{prefix} maximum inférieur au probable', dict(zip(columns, (0, 2, 1))), CHECK),
+                (f'{prefix} bornes inversées sans probable', dict(zip(columns, (2, None, 1))),
+                 'SQLITE_CONSTRAINT_TRIGGER'),
             ])
         for column in ('complexite_technique', 'complexite_organisationnelle', 'incertitude'):
             cases.append((f'{column} invalide', {column: 'invalide'}, CHECK))

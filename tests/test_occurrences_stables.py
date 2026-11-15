@@ -25,6 +25,10 @@ class OccurrencesStablesTests(unittest.TestCase):
         self.old_schema.mkdir()
         for file in SCHEMA.glob('000[1-6]_*.sql'):
             shutil.copyfile(file, self.old_schema / file.name)
+        self.schema_8 = root / 'schema_8'
+        shutil.copytree(self.old_schema, self.schema_8)
+        for file in SCHEMA.glob('000[78]_*.sql'):
+            shutil.copyfile(file, self.schema_8 / file.name)
         self.connection = db.connect(self.path)
         self.addCleanup(self.close)
         migrations.migrate(self.connection, self.old_schema)
@@ -72,7 +76,7 @@ class OccurrencesStablesTests(unittest.TestCase):
              channel or uid(8, space), key, uid(1, 1), NOW))
 
     def upgrade(self):
-        self.assertEqual(migrations.migrate(self.connection, SCHEMA), ['0007', '0008'])
+        self.assertEqual(migrations.migrate(self.connection, self.schema_8), ['0007', '0008'])
 
     def test_upgrade_preserves_rows_and_is_idempotent(self):
         self.occurrence(1, 1, uid(11, 1))
@@ -83,7 +87,7 @@ class OccurrencesStablesTests(unittest.TestCase):
         self.reopen()
         self.assertEqual([tuple(row) for row in self.connection.execute('SELECT * FROM occurrence_contact ORDER BY id')], before)
         self.assertEqual(migrations.applied_versions(self.connection), [f'{n:04}' for n in range(1, 9)])
-        self.assertEqual(migrations.migrate(self.connection, SCHEMA), [])
+        self.assertEqual(migrations.migrate(self.connection, self.schema_8), [])
         self.assertEqual(db.integrity_problems(self.connection), [])
 
     def test_duplicate_upgrade_is_atomic(self):

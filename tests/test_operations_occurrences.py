@@ -23,7 +23,7 @@ class OperationsOccurrencesTests(unittest.TestCase):
         self.connection = db.connect(self.path)
         self.addCleanup(self.close)
         self.assertEqual(migrations.migrate(self.connection, SCHEMA),
-                         [f'{n:04}' for n in range(1, 9)])
+                         [f'{n:04}' for n in range(1, 10)])
         c = self.connection
         c.execute('INSERT INTO utilisateur (id, nom_affiche, email, cree_le) VALUES (?, ?, ?, ?)',
                   (uid(1, 1), 'Test', 'test@example.invalid', NOW))
