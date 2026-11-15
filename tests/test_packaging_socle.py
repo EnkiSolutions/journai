@@ -144,6 +144,63 @@ class PackagingSocleTests(unittest.TestCase):
                     self.assertIsNotNone(connection.execute(
                         "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
                         (name + "_override",)).fetchone())
+            # An isolated interpreter must load the installed wheel, not PYTHONPATH or the checkout.
+            venv = root / "venv"
+            subprocess.run([sys.executable, "-I", "-m", "venv", str(venv)], cwd=root, env=env, check=True)
+            python = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+            subprocess.run([str(python), "-I", "-m", "pip", "--isolated", "install", "--no-index",
+                            "--no-deps", str(wheel)], cwd=root, env=env, check=True)
+            self.assertFalse((overrides[0].parent / "fixtures").exists())
+            packaged = [json.loads((target / "journai" / "fixtures" / name).read_text(encoding="utf-8"))
+                        for name in sorted(FIXTURES)]
+            expected_counts = {}
+            for fixture in packaged:
+                for entry in fixture["tables"]:
+                    expected_counts[entry["table"]] = expected_counts.get(entry["table"], 0) + len(entry["rows"])
+            for environment in ("dev", "test"):
+                seed_db = root / ("seed-" + environment + ".db")
+                shutil.copy2(module_db, seed_db)
+                command = [str(python), "-I", "-m", "journai.seed", "--db", str(seed_db)]
+                seed_env = {**env, "JOURNAI_ENV": environment}
+                result = subprocess.run(command, cwd=empty, env=seed_env, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                with closing(sqlite3.connect(seed_db)) as connection:
+                    for table, count in expected_counts.items():
+                        self.assertEqual(connection.execute(f'SELECT count(*) FROM "{table}"').fetchone()[0], count)
+                    for fixture in packaged:
+                        espace = next(entry for entry in fixture["tables"] if entry["table"] == "espace")
+                        for row in espace["rows"]:
+                            self.assertIsNotNone(connection.execute(
+                                "SELECT 1 FROM espace WHERE id = ?", (row["id"],)).fetchone())
+                    original = list(connection.iterdump())
+                for forbidden in (environment, "staging", "prod"):
+                    result = subprocess.run(command, cwd=empty, env={**env, "JOURNAI_ENV": forbidden},
+                                            capture_output=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(b"non vide" if forbidden == environment else b"environnement", result.stderr)
+                    with closing(sqlite3.connect(seed_db)) as connection:
+                        self.assertEqual(list(connection.iterdump()), original)
+                for forbidden in ("staging", "prod"):
+                    result = subprocess.run(command + ["--replace"], cwd=empty,
+                                            env={**env, "JOURNAI_ENV": forbidden}, capture_output=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(b"environnement", result.stderr)
+                    with closing(sqlite3.connect(seed_db)) as connection:
+                        self.assertEqual(list(connection.iterdump()), original)
+            custom = root / "custom-fixtures"
+            custom.mkdir()
+            espace = next(entry for entry in packaged[0]["tables"] if entry["table"] == "espace")
+            espace["rows"][0]["nom"] = "Espace synthétique personnalisé"
+            (custom / "custom.json").write_text(json.dumps(packaged[0]), encoding="utf-8")
+            override_db = root / "seed-override.db"
+            shutil.copy2(module_db, override_db)
+            result = subprocess.run([str(python), "-I", "-m", "journai.seed", "--db", str(override_db),
+                                     "--fixtures", str(custom)], cwd=empty, env={**env, "JOURNAI_ENV": "test"},
+                                    capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            with closing(sqlite3.connect(override_db)) as connection:
+                self.assertEqual(connection.execute("SELECT nom FROM espace").fetchall(),
+                                 [("Espace synthétique personnalisé",)])
             console = target / "bin" / ("journai.exe" if os.name == "nt" else "journai")
             console_env = {**env, "PYTHONPATH": str(target), "PYTHONUTF8": "1", "JOURNAI_DB": str(root / "console.db")}
             result = subprocess.run([str(console)], cwd=root, env=console_env, text=True,

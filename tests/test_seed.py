@@ -115,16 +115,21 @@ class SeedTests(unittest.TestCase):
             for failure in ("missing_update", "foreign_key"):
                 data = json.loads(json.dumps(base))
                 if failure == "missing_update":
-                    data["updates"][0]["id"] = "missing"
+                    data["updates"][0]["id"] = "00000000-0000-4000-8000-000000000001"
+                    message = "update doit toucher exactement une ligne"
                 else:
-                    data["updates"][0]["set"]["version_cible_id"] = "missing"
+                    data["updates"][0]["set"]["version_cible_id"] = "00000000-0000-4000-8000-000000000002"
+                    message = "FOREIGN KEY constraint failed"
                 self.write_fixture(data)
-                with self.subTest(failure=failure), self.assertRaises(seed.SeedError):
-                    seed.seeded(connection, self.fixtures, env="test", replace=True, allow_replace=True)
-                self.assertEqual(self.snapshot(), original)
+                with self.subTest(failure=failure):
+                    with self.assertRaisesRegex(seed.SeedError, message):
+                        seed.seeded(connection, self.fixtures, env="test", replace=True, allow_replace=True)
+                    self.assertEqual(self.snapshot(), original)
+                    connection.close()
+                    connection = db.connect(self.path, create=False)
+                    self.assertEqual(self.snapshot(), original)
         finally:
             connection.close()
-        self.assertEqual(self.snapshot(), original)
 
     def test_two_fixtures_counts_and_explicit_replacement(self):
         shutil.copy2(FIXTURES / "espace-b.json", self.fixtures)

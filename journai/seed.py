@@ -162,7 +162,7 @@ def main(argv: list[str] | None = None) -> int:
         config = load_config()
         connection = db.connect(args.db_path or config.db_path)
         try:
-            counts = seeded(connection, args.fixtures_dir or config.schema_dir.parent / "fixtures",
+            counts = seeded(connection, args.fixtures_dir or FIXTURES_DIR,
                             env=config.env, replace=args.replace, allow_replace=args.replace)
             print("fixtures insérées :", ", ".join(f"{t}={n}" for t, n in counts.items()))
         finally:
