@@ -91,6 +91,24 @@ class HttpTests(unittest.TestCase):
         with closing(sqlite3.connect(self.path)) as connection:
             return list(connection.iterdump())
 
+    def test_persistent_connection_does_not_block_another_client(self):
+        with closing(http.client.HTTPConnection(*self.server.server_address, timeout=1)) as first:
+            first.request("GET", "/api/v1/projet", headers={"Authorization": self.auth})
+            response = first.getresponse()
+            self.assertEqual(response.status, 200)
+            response.read()
+            self.assertFalse(response.will_close)
+            self.assertIsNotNone(first.sock)
+            with closing(http.client.HTTPConnection(*self.server.server_address, timeout=1)) as second:
+                second.request("GET", "/api/v1/projet", headers={"Authorization": self.auth})
+                response = second.getresponse()
+                self.assertEqual(response.status, 200)
+                response.read()
+            first.request("GET", "/api/v1/projet", headers={"Authorization": self.auth})
+            response = first.getresponse()
+            self.assertEqual(response.status, 200)
+            response.read()
+
     def test_scoped_list_detail_inclusion_and_etags(self):
         status, headers, payload = self.get_json("/api/v1/projet?limit=1")
         self.assertEqual(status, 200)

@@ -4,7 +4,7 @@ import json
 import re
 import sqlite3
 from contextlib import closing
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qsl, urlsplit
 
 from journai.auth import AuthError, DemoAuth
@@ -16,7 +16,7 @@ SAFE_FIELDS = {column for resource in CATALOG.values() for column in resource.co
 }
 
 
-class ApiServer(HTTPServer):
+class ApiServer(ThreadingHTTPServer):
     def __init__(self, config: Config):
         self.auth = DemoAuth(config)
         self.config = config
