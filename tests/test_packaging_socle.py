@@ -1,9 +1,12 @@
 import http.client
+import json
 import os
 import shutil
 import socket
+import sqlite3
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import unittest
@@ -20,7 +23,7 @@ MIGRATIONS = {
     "0001_identite_espace_projet.sql", "0002_parcours_etape_contact.sql",
     "0003_operation_ressource_constat.sql", "0004_action_arbitrage.sql",
     "0005_collaboration_pilotage.sql", "0006_versions_courantes.sql",
-    "0007_cles_occurrences.sql",
+    "0007_cles_occurrences.sql", "0008_commentaires_espace.sql",
 }
 FIXTURES = {"espace-a.json", "espace-b.json"}
 
@@ -57,10 +60,23 @@ class PackagingSocleTests(unittest.TestCase):
             shutil.copy2(ROOT / "pyproject.toml", source)
             shutil.copytree(ROOT / "journai", source / "journai",
                             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-            wheels = root / "wheels"
-            wheels.mkdir()
             env = {key: os.environ[key] for key in ("SYSTEMROOT", "WINDIR", "TEMP", "TMP", "PATH")
                    if key in os.environ}
+            distributions = root / "distributions"
+            distributions.mkdir()
+            subprocess.run(
+                [sys.executable, "-I", "-c",
+                 "import sys; import setuptools.build_meta as b; b.build_sdist(sys.argv[1])",
+                 str(distributions)], cwd=source, env=env, check=True,
+            )
+            sdist, = distributions.glob("*.tar.gz")
+            with tarfile.open(sdist) as archive:
+                members = {name.split("/", 1)[1]: name for name in archive.getnames() if "/" in name}
+                for name in MIGRATIONS:
+                    path = "journai/migrations/" + name
+                    self.assertEqual(archive.extractfile(members[path]).read(), (source / path).read_bytes())
+            wheels = root / "wheels"
+            wheels.mkdir()
             subprocess.run(
                 [sys.executable, "-I", "-m", "pip", "--isolated", "wheel", "--no-index",
                  "--no-deps", "--no-build-isolation", "--wheel-dir", str(wheels), str(source)],
@@ -92,6 +108,41 @@ class PackagingSocleTests(unittest.TestCase):
                 [sys.executable, "-I", "-c", INSTALLED_CHECK, str(target), str(ROOT), str(root / "data.db")],
                 cwd=root, env=env, check=True,
             )
+            empty = root / "empty"
+            empty.mkdir()
+            module_env = {**env, "PYTHONPATH": str(target), "PYTHONUTF8": "1"}
+            module_db = root / "module.db"
+            for expected in ("0008", "aucune (déjà à jour)"):
+                result = subprocess.run(
+                    [sys.executable, "-m", "journai.migrations", "--db", str(module_db)],
+                    cwd=empty, env=module_env, text=True, capture_output=True, encoding="utf-8",
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(expected, result.stdout)
+            overrides = []
+            for name in ("config", "env", "explicit"):
+                schema = root / (name + "-schema")
+                schema.mkdir()
+                (schema / "0001_override.sql").write_text(
+                    f"CREATE TABLE {name}_override (id INTEGER);", encoding="utf-8")
+                overrides.append(schema)
+            (empty / "config").mkdir()
+            (empty / "config" / "journai.json").write_text(
+                json.dumps({"schema_dir": str(overrides[0])}), encoding="utf-8")
+            for index, name in enumerate(("config", "env", "explicit")):
+                override_env = dict(module_env)
+                if index >= 1:
+                    override_env["JOURNAI_SCHEMA_DIR"] = str(overrides[1])
+                command = [sys.executable, "-m", "journai.migrations", "--db", str(root / (name + ".db"))]
+                if index == 2:
+                    command += ["--schema-dir", str(overrides[2])]
+                result = subprocess.run(command, cwd=empty, env=override_env, text=True,
+                                        capture_output=True, encoding="utf-8")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                with closing(sqlite3.connect(root / (name + ".db"))) as connection:
+                    self.assertIsNotNone(connection.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                        (name + "_override",)).fetchone())
             console = target / "bin" / ("journai.exe" if os.name == "nt" else "journai")
             console_env = {**env, "PYTHONPATH": str(target), "PYTHONUTF8": "1", "JOURNAI_DB": str(root / "console.db")}
             result = subprocess.run([str(console)], cwd=root, env=console_env, text=True,
@@ -102,7 +153,7 @@ class PackagingSocleTests(unittest.TestCase):
                                     capture_output=True, encoding="utf-8")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("espace: 2", result.stdout)
-            self.assertIn("0007", result.stdout)
+            self.assertIn("0008", result.stdout)
             result = subprocess.run([str(console), "selftest"], cwd=root, env=console_env,
                                     text=True, capture_output=True, encoding="utf-8", timeout=30)
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -150,7 +201,7 @@ import journai
 package = installed / "journai"
 for module in (journai, config, db, migrations, seed, validation):
     assert Path(module.__file__).resolve().is_relative_to(package.resolve()), module.__file__
-versions = [f"{number:04}" for number in range(1, 8)]
+versions = [f"{number:04}" for number in range(1, 9)]
 connection = db.connect(database)
 try:
     assert migrations.migrate(connection, package / "migrations") == versions

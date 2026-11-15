@@ -36,7 +36,7 @@ class MigrationTests(unittest.TestCase):
         return path
 
     def test_real_migrations_are_verified_and_idempotent(self):
-        versions = [f"{number:04}" for number in range(1, 8)]
+        versions = [f"{number:04}" for number in range(1, 9)]
         self.assertEqual(migrations.migrate(self.connection, SCHEMA), versions)
         self.assertEqual(migrations.applied_versions(self.connection), versions)
         rows = self.connection.execute(

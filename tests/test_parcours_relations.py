@@ -94,7 +94,7 @@ class ParcoursRelationsTests(unittest.TestCase):
         self.reopen()
         self.assertEqual(self.references(), before)
         self.assertEqual(migrations.applied_versions(self.connection), VERSIONS_5 + ['0006'])
-        self.assertEqual(migrations.migrate(self.connection, SCHEMA), ['0007'])
+        self.assertEqual(migrations.migrate(self.connection, SCHEMA), ['0007', '0008'])
         self.assertEqual(migrations.migrate(self.connection, SCHEMA), [])
 
     def test_inconsistent_upgrade_rolls_back(self):

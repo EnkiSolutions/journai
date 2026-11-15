@@ -72,7 +72,7 @@ class OccurrencesStablesTests(unittest.TestCase):
              channel or uid(8, space), key, uid(1, 1), NOW))
 
     def upgrade(self):
-        self.assertEqual(migrations.migrate(self.connection, SCHEMA), ['0007'])
+        self.assertEqual(migrations.migrate(self.connection, SCHEMA), ['0007', '0008'])
 
     def test_upgrade_preserves_rows_and_is_idempotent(self):
         self.occurrence(1, 1, uid(11, 1))
@@ -82,7 +82,7 @@ class OccurrencesStablesTests(unittest.TestCase):
         self.upgrade()
         self.reopen()
         self.assertEqual([tuple(row) for row in self.connection.execute('SELECT * FROM occurrence_contact ORDER BY id')], before)
-        self.assertEqual(migrations.applied_versions(self.connection), [f'{n:04}' for n in range(1, 8)])
+        self.assertEqual(migrations.applied_versions(self.connection), [f'{n:04}' for n in range(1, 9)])
         self.assertEqual(migrations.migrate(self.connection, SCHEMA), [])
         self.assertEqual(db.integrity_problems(self.connection), [])
 

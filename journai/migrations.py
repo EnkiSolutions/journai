@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from journai import db, validation
-from journai.config import load_config
+from journai.config import DEFAULT_SCHEMA_DIR, load_config
 
 JOURNAL_TABLE = "schema_migration"
 
@@ -130,7 +130,12 @@ def main(argv: list[str] | None = None) -> int:
     config = load_config()
     connection = db.connect(args.db_path or config.db_path)
     try:
-        applied = migrate(connection, args.schema_dir or config.schema_dir)
+        schema_dir = config.schema_dir
+        if args.schema_dir is not None:
+            schema_dir = Path(args.schema_dir)
+        elif schema_dir == Path(DEFAULT_SCHEMA_DIR):
+            schema_dir = Path(__file__).parent / "migrations"
+        applied = migrate(connection, schema_dir)
         versions = applied_versions(connection)
         print("migrations appliquées :", ", ".join(applied) if applied else "aucune (déjà à jour)")
         print("version courante :", versions[-1] if versions else "aucune")
