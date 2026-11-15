@@ -78,12 +78,18 @@ class QueryTests(unittest.TestCase):
         self.assertEqual([r["id"] for r in action["included"]["commentaire"]], [COMMENT])
         self.denied(404, "action", identifiant=PRIVATE)
         self.assertEqual(self.query("action", {"id": SHARED, "projet_pilote_id": PROJECT_A})["meta"]["total"], 0)
-        links = self.query("action", {"include": "action_projet"}, identifiant=SHARED)["included"]["action_projet"]
+        included = self.query("action", {"include": "action_projet"}, identifiant=SHARED)
+        links = included["included"]["action_projet"]
         self.assertEqual([r["projet_id"] for r in links], [PROJECT_B])
+        self.assertEqual(included["included_meta"]["action_projet"], {
+            "ressource": "action_projet", "total": 1, "limit": 500, "offset": 0, "espace_id": SPACE})
         for name in ("action_occurrence", "action_operation", "action_ressource", "action_constat", "contribution_action", "estimation_action"):
             self.assertEqual(self.query(name, {"action_id": SHARED})["meta"]["total"], 0, name)
         for relation in ("action_occurrence", "action_operation", "action_ressource", "action_constat"):
-            self.assertEqual(self.query("action", {"include": relation}, identifiant=SHARED)["included"][relation], [])
+            included = self.query("action", {"include": relation}, identifiant=SHARED)
+            self.assertEqual(included["included"][relation], [])
+            self.assertEqual(included["included_meta"][relation], {
+                "ressource": relation, "total": 0, "limit": 500, "offset": 0, "espace_id": SPACE})
 
     def test_pagination_total_is_scoped_before_limit(self):
         for index in range(55):
@@ -101,6 +107,27 @@ class QueryTests(unittest.TestCase):
         self.assertEqual(last["meta"]["total"], 53)
         self.assertEqual(len(last["data"]), 3)
         self.assertFalse({r["id"] for r in first["data"]} & {r["id"] for r in last["data"]})
+
+    def test_included_pagination_preserves_scope_and_list_continuation(self):
+        source = self.connection.execute("SELECT id FROM parcours WHERE projet_id=?", (PROJECT_A,)).fetchone()[0]
+        foreign = self.connection.execute("SELECT id, projet_id FROM parcours WHERE espace_id<>?", (SPACE,)).fetchone()
+        sql = """INSERT INTO parcours (id, espace_id, projet_id, nom, finalite, responsable_id, cree_par, cree_le)
+                 SELECT ?, espace_id, projet_id, nom, finalite, responsable_id, cree_par, cree_le FROM parcours WHERE id=?"""
+        self.connection.executemany(sql, ((f"99999999-0000-4000-8000-{i:012d}", source) for i in range(501)))
+        self.connection.execute(sql, ("88888888-0000-4000-8000-000000000001", foreign[0]))
+        result = self.query("projet", {"include": "parcours"}, identifiant=PROJECT_A)
+        meta = result["included_meta"]["parcours"]
+        self.assertEqual(meta, {"ressource": "parcours", "total": 502, "limit": 500, "offset": 0, "espace_id": SPACE})
+        first = result["included"]["parcours"]
+        self.assertEqual(len(first), 500)
+        self.assertTrue(all(row["espace_id"] == SPACE and row["projet_id"] == PROJECT_A for row in first))
+        rest = self.query("parcours", {"projet_id": PROJECT_A, "limit": str(meta["limit"]),
+                                      "offset": str(meta["offset"] + meta["limit"])})
+        self.assertEqual(rest["meta"]["total"], 502)
+        self.assertEqual(len(rest["data"]), 2)
+        self.assertTrue(all(row["espace_id"] == SPACE and row["projet_id"] == PROJECT_A for row in rest["data"]))
+        self.assertFalse({row["id"] for row in first} & {row["id"] for row in rest["data"]})
+        self.assertNotIn(foreign[0], {row["id"] for row in first + rest["data"]})
 
     def test_cross_project_association_requires_both_endpoints(self):
         other_operation = self.connection.execute("SELECT id FROM operation WHERE projet_pilote_id=?", (PROJECT_B,)).fetchone()[0]

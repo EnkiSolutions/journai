@@ -51,6 +51,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", origins[0])
             self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Authorization")
+            self.send_header("Access-Control-Expose-Headers", "ETag")
         self.send_header("Vary", "Origin")
 
     def _respond(self, status, payload=None, *, etag=None):

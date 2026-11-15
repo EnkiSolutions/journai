@@ -12,6 +12,7 @@ import threading
 import time
 import unittest
 from contextlib import closing
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,6 +28,7 @@ CONTRIBUTOR = "7296f48c-4748-53f3-a73c-6847fa3c9ed8"
 PROJECT_A = "d433b0ab-5208-520a-8068-b00950d5f467"
 PROJECT_B = "028ef5b1-354b-5ca3-b352-b177b47a4852"
 SHARED = "36462979-914f-5bee-893a-0984f319c5f2"
+PRIVATE = "ef35cbd0-a577-5482-a098-6abdd628cb28"
 ORIGIN = "https://example.test"
 
 
@@ -103,6 +105,12 @@ class HttpTests(unittest.TestCase):
         status, _, payload = self.get_json(f"/api/v1/action/{SHARED}?include=action_projet")
         self.assertEqual(status, 200)
         self.assertEqual([row["projet_id"] for row in payload["included"]["action_projet"]], [PROJECT_A])
+        self.assertEqual(payload["included_meta"]["action_projet"]["total"], 1)
+        status, _, empty = self.get_json(f"/api/v1/action/{PRIVATE}?include=action_constat")
+        self.assertEqual(status, 200)
+        self.assertEqual(empty["included"]["action_constat"], [])
+        self.assertEqual(empty["included_meta"]["action_constat"], {
+            "ressource": "action_constat", "total": 0, "limit": 500, "offset": 0, "espace_id": SPACE})
         status, headers, payload = self.get_json("/api/v1/parcours_public")
         self.assertEqual(status, 200)
         self.assertGreater(payload["meta"]["total"], 0)
@@ -114,6 +122,29 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(self.get_json(f"/api/v1/parcours?projet_id={PROJECT_B}")[0], 403)
         self.auth = "Bearer " + token(CONTRIBUTOR)
         self.assertEqual(self.get_json("/api/v1/projet?limit=1")[2]["meta"]["total"], 2)
+
+    def test_included_pagination_and_continuation_over_http(self):
+        with closing(db.connect(self.path)) as connection:
+            source = connection.execute("SELECT id FROM parcours WHERE projet_id=?", (PROJECT_A,)).fetchone()[0]
+            foreign = connection.execute("SELECT id FROM parcours WHERE espace_id<>?", (SPACE,)).fetchone()[0]
+            sql = """INSERT INTO parcours (id, espace_id, projet_id, nom, finalite, responsable_id, cree_par, cree_le)
+                     SELECT ?, espace_id, projet_id, nom, finalite, responsable_id, cree_par, cree_le FROM parcours WHERE id=?"""
+            connection.executemany(sql, ((f"99999999-0000-4000-8000-{i:012d}", source) for i in range(501)))
+            connection.execute(sql, ("88888888-0000-4000-8000-000000000001", foreign))
+            connection.commit()
+        status, _, result = self.get_json(f"/api/v1/projet/{PROJECT_A}?include=parcours")
+        self.assertEqual(status, 200)
+        meta = result["included_meta"]["parcours"]
+        self.assertEqual(meta, {"ressource": "parcours", "total": 502, "limit": 500, "offset": 0, "espace_id": SPACE})
+        first = result["included"]["parcours"]
+        self.assertEqual(len(first), 500)
+        status, _, rest = self.get_json(f"/api/v1/parcours?projet_id={PROJECT_A}&limit={meta['limit']}&offset={meta['offset'] + meta['limit']}")
+        self.assertEqual(status, 200)
+        self.assertEqual(rest["meta"]["total"], 502)
+        self.assertEqual(len(rest["data"]), 2)
+        self.assertTrue(all(row["espace_id"] == SPACE and row["projet_id"] == PROJECT_A for row in first + rest["data"]))
+        self.assertFalse({row["id"] for row in first} & {row["id"] for row in rest["data"]})
+        self.assertNotIn(foreign, {row["id"] for row in first + rest["data"]})
 
     def test_head_auth_and_errors_do_not_change_data(self):
         before = self.snapshot()
@@ -164,11 +195,23 @@ class HttpTests(unittest.TestCase):
                                                      headers=[("Origin", origin)])
                 self.assertEqual(status, 200)
                 self.assertEqual(headers.get("Access-Control-Allow-Origin"), origin if allowed else None)
+                self.assertEqual(headers.get("Access-Control-Expose-Headers"), "ETag" if allowed else None)
                 self.assertEqual(headers["Vary"], "Origin")
                 if method == "OPTIONS":
                     self.assertEqual(body, b"")
                     if allowed:
                         self.assertEqual(headers["Access-Control-Allow-Headers"], "Authorization")
+        status, headers, payload = self.get_json(f"/api/v1/projet/{PROJECT_A}", headers=[("Origin", ORIGIN)])
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["ETag"], f'"{PROJECT_A}@{payload["data"]["revision"]}"')
+        self.assertEqual(headers["Access-Control-Expose-Headers"], "ETag")
+        self.server.config = replace(self.config, cors_origin="")
+        status, headers, _ = self.get_json(f"/api/v1/projet/{PROJECT_A}", headers=[("Origin", ORIGIN)])
+        self.assertEqual(status, 200)
+        self.assertIn("ETag", headers)
+        self.assertNotIn("Access-Control-Allow-Origin", headers)
+        self.assertNotIn("Access-Control-Expose-Headers", headers)
+        self.server.config = self.config
         self.assertEqual(self.get_json(path, headers=[("Origin", ORIGIN), ("Origin", ORIGIN)])[0], 400)
         secret = "v1.secret.signature"
         status, _, body = self.request(path + "?" + secret + "=x")

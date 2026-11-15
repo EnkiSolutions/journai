@@ -197,5 +197,6 @@ def read(connection: sqlite3.Connection, context: AuthContext, name: str,
             target, foreign_key = INCLUDES[name][include]
             included = read(connection, context, target, {foreign_key: identifiant, "limit": "500"})
             result["included"] = {include: included["data"]}
+            result["included_meta"] = {include: included["meta"]}
         return result
     return {"data": rows, "meta": {"ressource": name, "total": total, "limit": limit, "offset": offset, "espace_id": context.espace_id}}
