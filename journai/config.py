@@ -53,10 +53,16 @@ def load_config(config_file: str | os.PathLike[str] | None = None) -> Config:
     env = os.environ.get("JOURNAI_ENV", str(data.get("env", DEFAULT_ENV)))
     if env not in {"dev", "test", "staging", "prod"}:
         raise ValueError(f"JOURNAI_ENV invalide : {env!r}")
-    db_path = Path(os.environ.get("JOURNAI_DB", str(data.get("db", DEFAULT_DB_PATH))))
+    db_raw = os.environ.get("JOURNAI_DB", data.get("db", DEFAULT_DB_PATH))
+    if not isinstance(db_raw, str):
+        raise ValueError("db doit être un chemin textuel")
+    db_path = Path(db_raw)
     host = os.environ.get("JOURNAI_HOST", str(data.get("host", DEFAULT_HOST)))
     log_level = os.environ.get("JOURNAI_LOG_LEVEL", str(data.get("log_level", DEFAULT_LOG_LEVEL)))
-    schema_dir = Path(os.environ.get("JOURNAI_SCHEMA_DIR", str(data.get("schema_dir", DEFAULT_SCHEMA_DIR))))
+    schema_raw = os.environ.get("JOURNAI_SCHEMA_DIR", data.get("schema_dir", DEFAULT_SCHEMA_DIR))
+    if not isinstance(schema_raw, str):
+        raise ValueError("schema_dir doit être un chemin textuel")
+    schema_dir = Path(schema_raw)
     cors_origin = os.environ.get("JOURNAI_CORS_ORIGIN", str(data.get("cors_origin", DEFAULT_CORS_ORIGIN)))
     port_raw = os.environ.get("JOURNAI_PORT", data.get("port", DEFAULT_PORT))
     try:

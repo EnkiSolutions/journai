@@ -56,6 +56,45 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(load_config(), Config("staging", Path("env.db"), "env-host", 4321,
                              "WARNING", Path("env-schema"), "https://example.org"))
 
+    def test_path_types_and_environment_overrides(self):
+        for key, env_key, attribute in (("db", "JOURNAI_DB", "db_path"),
+                                        ("schema_dir", "JOURNAI_SCHEMA_DIR", "schema_dir")):
+            for value in (None, True, False, 42, 1.5, [], {}):
+                with self.subTest(key=key, value=value):
+                    self.write_json("config/journai.json", {key: value})
+                    with self.assertRaisesRegex(ValueError, key + " doit être un chemin textuel"):
+                        load_config()
+                    with patch.dict(os.environ, {env_key: "environment/path"}):
+                        self.assertEqual(getattr(load_config(), attribute), Path("environment/path"))
+            self.write_json("config/journai.json", {key: "local/path"})
+            self.assertEqual(getattr(load_config(), attribute), Path("local/path"))
+            self.write_json("config/journai.json", {})
+            default = "var/journai.db" if key == "db" else "journai/migrations"
+            self.assertEqual(getattr(load_config(), attribute), Path(default))
+
+    def test_path_priorities_validate_only_the_selected_value(self):
+        for key, env_key, attribute in (("db", "JOURNAI_DB", "db_path"),
+                                        ("schema_dir", "JOURNAI_SCHEMA_DIR", "schema_dir")):
+            with self.subTest(key=key):
+                self.write_json("config/journai.example.json", {key: None})
+                self.write_json("config/journai.json", {key: "local/path"})
+                self.write_json("explicit.json", {key: "explicit/path"})
+                self.assertEqual(getattr(load_config(), attribute), Path("local/path"))
+                self.assertEqual(getattr(load_config("explicit.json"), attribute), Path("explicit/path"))
+                self.write_json("config/journai.json", {})
+                with self.assertRaisesRegex(ValueError, key + " doit être un chemin textuel"):
+                    load_config()
+                with patch.dict(os.environ, {env_key: "environment/path"}):
+                    self.assertEqual(getattr(load_config(), attribute), Path("environment/path"))
+                self.write_json("config/journai.example.json", {key: "example/path"})
+                self.assertEqual(getattr(load_config(), attribute), Path("example/path"))
+                self.write_json("explicit.json", {key: None})
+                with self.assertRaisesRegex(ValueError, key + " doit être un chemin textuel"):
+                    load_config("explicit.json")
+                with patch.dict(os.environ, {env_key: "environment/path"}):
+                    self.assertEqual(getattr(load_config("explicit.json"), attribute), Path("environment/path"))
+                self.write_json("config/journai.example.json", {})
+
     def test_rejects_invalid_environment_and_port(self):
         for value in ("dev", "test", "staging", "prod"):
             with self.subTest(env=value), patch.dict(os.environ, {"JOURNAI_ENV": value}):
