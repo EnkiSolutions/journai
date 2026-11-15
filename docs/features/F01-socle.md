@@ -12,6 +12,8 @@ Dépendances : aucune.
 - [ ] Fournir migrations versionnées, fixtures synthétiques, configuration exemple sans secrets et commandes de lancement.
 - [ ] La CI exécute les contrôles de typage, de qualité et les tests utiles ; le parcours de démarrage est vérifié.
 
+La documentation relie les invariants de la spécification à l’[ADR](../adr/0001-architecture-et-contrat-api.md), aux features responsables et à leurs tests existants ou attendus. Cette traçabilité ne transfère pas à F01 les écritures et comportements métier des features futures.
+
 ## Livraison
 
 - [ ] Code implémenté et vérifié

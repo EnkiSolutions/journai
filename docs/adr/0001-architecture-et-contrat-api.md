@@ -295,7 +295,12 @@ requêtes**. Format canonique :
   ```
 
   Détail : `data` est l’objet unique. Le détail accepte `?include=<nom>`, qui renvoie en plus
-  `included: {"<nom>": [...]}` les lignes d’une association déclarée par la clé étrangère.
+  `included: {"<nom>": [...]}` les lignes d’une association déclarée par la clé étrangère et
+  `included_meta: {"<nom>": {"ressource": ..., "total": ..., "limit": 500, "offset": 0,
+  "espace_id": ...}}`, même si l’inclusion est vide. Le total respecte le périmètre autorisé
+  avant pagination ; au-delà de 500 lignes, la suite se lit sur la liste de la ressource incluse,
+  filtrée par la clé de relation et paginée. `tests/test_queries.py` et `tests/test_api.py`
+  couvrent notamment les inclusions vides et la continuation.
 - **Filtrage, tri, pagination** (paramètres de requête, tous optionnels) :
   `limit` (défaut 50, plafond 500), `offset` (défaut 0), `ordre=<colonne>`,
   `sens=asc|desc`, plus un filtre d’égalité `<colonne>=<valeur>` sur les colonnes retournées.
@@ -412,13 +417,24 @@ python -I -m journai selftest
 
 La suite `tests/` comprend notamment le wheel installé hors checkout et une lecture HTTP réelle.
 Le selftest isolé utilise le paquet installé. Ruff format, pyright et pip-audit ne sont pas
-exécutés par ce flux. `review-gate.yml` reste dédié au certificat de revue et à la validation du SHA.
+exécutés par ce flux. `.github/workflows/review-gate.yml` exécute les tests du gate ; le script
+`scripts/review_gate.py`, pas ce seul workflow, contrôle le certificat et le SHA.
+
+**Périmètre des contrôles et du diff** : `AGENTS.md`, `docs/workflow.md` et `docs/backlog.md`
+sont déjà présents sur la base et non modifiés dans le diff de la PR : ils définissent contrat,
+responsabilités de revue et traçabilité des features (C1). Le workflow `review-gate.yml` est lui
+également présent sur la base ; `.github/workflows/coderabbit-gate.yml` n’existe pas à ce SHA.
+Le diff ajoute `.github/workflows/ci.yml` pour la qualité, le typage, les tests et le selftest de
+démarrage (C3), et modifie `scripts/review_gate.py` et `scripts/test_review_gate.py` pour
+encadrer la taille de publication du certificat de revue et tester ces limites (C1). Ces contrôles ne valent ni approbation CodeRabbit
+ni revue Reviewer.
 
 ## État d’exécution du socle — unité M4-CI-CONTRACT-1
 
 Le contrat est plus large que les preuves : M2 apporte migrations `0001`–`0007`, fixtures,
-configuration sans secret et paquet installable ; les limites des acquis sont détaillées dans
-R1–R5 ci-dessous. La lecture M3 comprend `api.py`, `auth.py`, `queries.py` et `validation.py` ;
+configuration sans secret et paquet installable ; la migration `0008` est également présente au
+SHA courant. Les limites des acquis sont détaillées dans R1–R5 ci-dessous. La lecture M3 comprend
+`api.py`, `auth.py`, `queries.py` et `validation.py` ;
 elle ne livre pas les écritures métier. `init`, `seed`, `status`, `selftest` et `serve` sont
 exercés localement, y compris depuis le wheel installé hors checkout. Le selftest initialise sa
 propre base temporaire, lit réellement par HTTP et vérifie des refus. Les six tests HTTP restent
@@ -446,16 +462,21 @@ sont pas des écritures déjà livrées.
 | C1 | D5, D10 | « Une action mutualisée reste unique et peut bénéficier à plusieurs projets, contacts, opérations et ressources. » · « Les répartitions validées de charge et de budget totalisent chacune 100 %. » | F11 (actions et contributeurs), F12 (mutualisation et répartitions), F14 (estimations de charge et coût) | Base : action unique et tables de répartition ; API : refus d’une répartition dont le total n’est pas 100 % | M2 (base), M3 (validation) |
 | C1 | D5, D10 | Une action ne peut devenir son propre ancêtre et ses dépendances restent sans cycle | F11 (actions et sous-actions), F13 (dépendances) | Tests distincts : refuser un cycle de filiation parent/enfant (F11) et un cycle dans le graphe de dépendances (F13), y compris indirects | M3 (validation applicative) |
 | C1 | D5, D10 | La priorité appartient au couple action–projet. Chaque décision conserve auteur, motif, estimation de la même action et évaluation du même couple. Une seule décision est courante. | F14, F15, F16 | Contrôles futurs : refuser les références incohérentes, vérifier unicité, historique et explicabilité du classement | M2/M3, comportement F16 |
-| C1 | D5, D9 | Habilitation explicite par projet, cloisonnement d’espace et partage limité au contenu commun d’une action et à ses échanges | F02, F03, F12, F24 | Tests futurs : refuser un projet sans habilitation, isoler listes/détails/inclusions, autoriser le contenu partagé sans exposer les autres données des projets | M3 (API et droits), contrôle complet en F24 |
-| C1 | D9 | « Le registre objet relie les objets métier aux commentaires et événements avec intégrité du type. L’édition utilise la révision pour détecter les conflits et permettre la comparaison. » | F21 (commentaires, abonnements, notifications), F22 (registre objet) | API : lecture du registre avec intégrité de type, comparaison à partir de la révision ; tester liste filtrée des associations sans id, détail refusé à 404 et absence d’ETag de révision pour les lignes sans revision | M3 (API) |
+| C1 | D5, D9 | Habilitation explicite par projet, cloisonnement d’espace et partage limité au contenu commun d’une action et à ses échanges | F02, F03, F12, F24 | Lecture : `tests/test_auth.py`, `tests/test_queries.py` et `tests/test_api.py` exercent authentification et isolation des listes, détails et inclusions ; habilitations d’écriture et contrôle complet restent futurs | M3 (API et droits), contrôle complet en F24 |
+| C1 | D9 | « Le registre objet relie les objets métier aux commentaires et événements avec intégrité du type. L’édition utilise la révision pour détecter les conflits et permettre la comparaison. » | F21 (commentaires, abonnements, notifications), F22 (registre objet) | Lecture du registre et comparaison des révisions : contrôles futurs F21/F22 ; `tests/test_api.py` exerce séparément liste d’associations sans id, détail 404 et absence d’ETag sans revision | M3 (API), puis F21/F22 pour les comportements futurs |
 | C1 | D4, D10 | Structure pilote et structures associées ; segments imbriqués et publics multiples par parcours. | F03, F04 | Contrôles futurs : rôles et rattachements explicites, refus des cycles et liens hors espace | M2/M3 et F03/F04 |
 | C1 | D5, D10 | Constats : source, date, confiance et distinction hypothèse/fait validé. Estimations et évaluations : dimensions séparées, échelles explicites et historique des avis. | F10, F14, F15 | Contrôles futurs : conserver champs de preuve, révisions et divergences sans moyenne implicite | M2/M3 et F10/F14/F15 |
 | C1 | D3, D5, D10 | Historiser les changements significatifs et les décisions. Relier les indicateurs à un projet ou à une occurrence ; conserver période, source et confiance des mesures. Distinguer livraison et validation de l’effet. | F16, F22, F23 | Contrôles futurs : relire l’historique, filtrer les mesures et vérifier la validation indépendante de la livraison | M2/M3 et F16/F22/F23 |
 | C2 | D2, D3, D6, D7, D8 | Migrations versionnées, fixtures synthétiques, configuration d’exemple sans secrets et commandes de lancement | F01 (socle) ; F02 et F03 (bénéficiaires) | Appliquer les migrations et charger les fixtures (M2), puis exécuter les commandes de lancement D8 (M3) | M2 et M3 |
 | C3 | D1, D8, D11 | « La CI exécute les contrôles de typage, de qualité et les tests utiles ; le parcours de démarrage est vérifié » | F01 (CI) ; autres features bénéficiaires | CI : typage, qualité, tests et selftest | M4 : job ci.yml exécuté et journal conservé |
 
-La colonne « Contrôle attendu » décrit les obligations, non leur acceptation. Les preuves
-structurelles M2 et la lecture M3 ne prouvent pas les comportements d'écriture : UUID serveur,
+La colonne « Contrôle attendu » décrit les obligations, non leur acceptation. Les chemins cités
+désignent des tests présents, pas une preuve de leur exécution au SHA courant :
+`tests/test_migrations.py` couvre notamment empreintes, idempotence et rollback ;
+`tests/test_associations_espace.py` exerce l’isolation structurelle, distincte de celle en lecture ;
+`tests/test_socle_integration.py` et `tests/test_startup.py` couvrent respectivement intégration
+sur disque et parcours CLI/HTTP. Les preuves structurelles M2 et la lecture M3 ne prouvent pas
+les comportements d'écriture : UUID serveur,
 audit, archivage et conflits relèvent de F22 ; immutabilité et révisions des versions de F05 ;
 exécution des opérations de F08 ; cycles d'actions de F11/F13. Priorité courante, historique,
 immutabilité, remplacement au même couple et espace et absence de cycles relèvent de F16 ;
