@@ -1,74 +1,27 @@
-"""Générateur local des fixtures synthétiques (jetable, exécuté puis supprimé).
-
-Contrôle à l'émission : clés inconnues et valeurs hors énumération du schéma = échec.
-"""
+"""Générateur local des fixtures synthétiques."""
 import json
-import re
 import sys
-import tempfile
-from contextlib import closing
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from journai import db, migrations  # noqa: E402
+from scripts._audit_fixtures import pre_audit  # noqa: E402
 
-SCHEMA = Path(__file__).resolve().parent.parent / "journai" / "migrations"
 OUT = Path(__file__).resolve().parent.parent / "journai" / "fixtures"
-T0 = "2026-01-05T09:00:00+00:00"
-T1 = "2026-02-10T09:00:00+00:00"
-T2 = "2026-03-02T10:00:00+00:00"
-ST = "systeme"
-
-with tempfile.TemporaryDirectory() as directory, closing(db.connect(Path(directory) / "schema.db")) as conn:
-    migrations.migrate(conn, SCHEMA)
-    COLS = {t: set(db.column_names(conn, t)) for t in db.table_names(conn)}
-SQL = "\n".join(p.read_text(encoding="utf-8") for p in sorted(SCHEMA.glob("*.sql")))
-ENUM = {m[0]: set(m[1].split(", ")) for m in
-        re.findall(r"CHECK \((\w+) IN \(([^)]*)\)\)", SQL)}
-ENUM = {k: {v.strip(" '") for v in vs.split(",")} for k, vs in
-          ((k, v) for k, v in ENUM.items())}
-ENUM = {k: {v.strip(" '") for v in vs.split(",")} for k, vs in
-          re.findall(r"CHECK \((\w+) IN \(([^)]*)\)\)", SQL).items()} if False else ENUM
+T0 = "2026-01-05T09:00:00.000000+00:00"
+T1 = "2026-02-10T09:00:00.000000+00:00"
+T2 = "2026-03-02T10:00:00.000000+00:00"
+SPACES = {"a850d82b-814e-540f-bf03-ef86588e90b9": "a",
+          "3d1510c4-5e02-54cf-8870-1fef5b8109bc": "b"}
 
 
 def audit(sets, tables):
-    for table, rows in tables.items():
-        for n, row in enumerate(rows, 1):
-            unknown = set(row) - COLS.get(table, set())
-            if unknown:
-                sys.exit(f"{table} #{n}: clés inconnues {sorted(unknown)}")
-            for key, value in row.items():
-                allowed = ENUM.get(key)
-                if allowed is not None and value is not None and value not in allowed:
-                    sys.exit(f"{table} #{n}: {key}={value!r} hors énumération {sorted(allowed)}")
-            for key in ("cree_par", "modifie_par", "resolu_par"):
-                v = row.get(key)
-                if v is not None and not str(v).startswith(("u-", "s-")):
-                    sys.exit(f"{table} #{n}: {key}={v!r} n'est pas un identifiant")
-            for key in ("cree_le", "modifie_le", "resolu_le"):
-                v = row.get(key)
-                if v is not None and len(str(v)) != 25:
-                    sys.exit(f"{table} #{n}: {key}={v!r} n'est pas un horodatage ISO")
+    audit_rows(tables)
 
 
 def audit_rows(tables):
-    for table, rows in tables.items():
-        for n, row in enumerate(rows, 1):
-            unknown = set(row) - COLS.get(table, set())
-            if unknown:
-                sys.exit(f"{table} #{n} : clés inconnues {sorted(unknown)}")
-            for key, value in row.items():
-                allowed = ENUM.get(key)
-                if allowed is not None and value is not None and value not in allowed:
-                    sys.exit(f"{table} #{n} : {key}={value!r} hors énumération {sorted(allowed)}")
-            for key in ("cree_par", "modifie_par", "resolu_par"):
-                v = row.get(key)
-                if v is not None and not str(v).startswith(("u-", "s-")):
-                    sys.exit(f"{table} #{n} : {key}={v!r} n'est pas un identifiant")
-            for key in ("cree_le", "modifie_le", "resolu_le", "observe_le"):
-                v = row.get(key)
-                if v is not None and len(str(v)) != 25:
-                    sys.exit(f"{table} #{n} : {key}={v!r} n'est pas un horodatage ISO")
+    problems = pre_audit(tables)
+    if problems:
+        sys.exit("\n".join(problems))
 
 
 rows = {}
@@ -82,22 +35,43 @@ def meta(who, when=T0):
     return {"cree_par": who, "cree_le": when}
 
 
-def space(table, row):
-    for key in ("id", "espace_id"):
-        if str(row.get(key, "")).startswith("b-"):
-            return "b"
-    return "a"
+def space(table, row, memberships):
+    if table == "utilisateur":
+        spaces = memberships.get(row.get("id"), set())
+    else:
+        space_id = row.get("id") if table == "espace" else row.get("espace_id")
+        spaces = {space_id} if space_id in SPACES else set()
+    if len(spaces) != 1 or not spaces <= SPACES.keys():
+        raise ValueError(f"{table} : appartenance inconnue ou ambiguë : {row}")
+    return SPACES[next(iter(spaces))]
 
 
-def emit(tables):
+def emit(tables, updates=()):
     audit_rows(tables)
-    for name in ("a", "b"):
-        payload = {"tables": [], "updates": []}
-        for table, items in tables.items():
-            kept = [r for r in items if space(table, r) == name]
+    memberships = {}
+    for row in tables.get("membre_espace", []):
+        memberships.setdefault(row["utilisateur_id"], set()).add(row["espace_id"])
+    payloads = {name: {"env": "dev", "tables": [], "updates": []} for name in ("a", "b")}
+    owners = {}
+    for table, items in tables.items():
+        split = {"a": [], "b": []}
+        for row in items:
+            name = space(table, row, memberships)
+            split[name].append(row)
+            if "id" in row:
+                key = (table, row["id"])
+                if key in owners:
+                    raise ValueError(f"identifiant dupliqué : {key}")
+                owners[key] = name
+        for name, kept in split.items():
             if kept:
-                payload["tables"].append({"table": table, "rows": kept})
-        OUT.glob
+                payloads[name]["tables"].append({"table": table, "rows": kept})
+    for update in updates:
+        key = (update["table"], update["id"])
+        if key not in owners:
+            raise ValueError(f"update sans appartenance : {key}")
+        payloads[owners[key]]["updates"].append(update)
+    for name, payload in payloads.items():
         (OUT / f"espace-{name}.json").write_text(
             json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         print(f"espace-{name}.json {len(payload['tables'])} tables")

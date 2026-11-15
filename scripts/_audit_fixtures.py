@@ -1,69 +1,89 @@
-"""Audit local des fixtures contre le schéma : colonnes, énumérations, dates, FK (jetable)."""
+"""Audit local des fixtures contre les contraintes du socle."""
 import json
 import re
 import sys
 import tempfile
 from contextlib import closing
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from journai import db, migrations  # noqa: E402
+from journai import db, migrations, seed, validation  # noqa: E402
 
 SCHEMA = Path(__file__).resolve().parent.parent / "journai" / "migrations"
 FIX = Path(__file__).resolve().parent.parent / "journai" / "fixtures"
 
 with tempfile.TemporaryDirectory() as directory, closing(db.connect(Path(directory) / "schema.db")) as conn:
     migrations.migrate(conn, SCHEMA)
-    COLS = {t: set(db.column_names(conn, t)) for t in db.table_names(conn)}
+    INFO = {t: list(conn.execute("SELECT * FROM pragma_table_info(?)", (t,))) for t in db.table_names(conn)}
+COLS = {table: {col[1] for col in info} for table, info in INFO.items()}
+NON_NULL = {table: {col[1] for col in info if col[3] or col[5]} for table, info in INFO.items()}
+NOT_NULL = {table: {col[1] for col in info if (col[3] or col[5]) and col[4] is None}
+            for table, info in INFO.items()}
 SQL = "\n".join(p.read_text(encoding="utf-8") for p in sorted(SCHEMA.glob("*.sql")))
 ENUM = {}
 for table, body in re.findall(r"CREATE TABLE (\w+) \((.*?)\n\);", SQL, re.S):
     for col, values in re.findall(r"CHECK \((\w+) IN \(([^)]*)\)\)", body):
-        ENUM[(table, col)] = {v.strip(" '") for v in values.split(",")}
-NOT_NULL = {
-    table: {m[0] for m in re.findall(r"^\s*(\w+) [A-Z]+ NOT NULL", body, re.M)}
-    for table, body in re.findall(r"CREATE TABLE (\w+) \((.*?)\n\);", SQL, re.S)
-}
+        ENUM[(table, col)] = {v.strip().strip("'") for v in values.split(",")}
 
-problems = []
-for name in ("a", "b"):
-    data = json.loads((FIX / f"espace-{name}.json").read_text(encoding="utf-8"))
-    tables = data["tables"] if isinstance(data, dict) else data
-    seen = {e["table"]: {tuple(sorted(r)) for r in e["rows"]} for e in tables}
-    for entry in tables:
-        table = entry["table"]
-        rows = entry["rows"]
-        for n, row in enumerate(rows, 1):
-            where = f"{name}/{table}#{n}"
-            if set(row) - COLS.get(table, set()):
-                problems.append(f"{where} colonnes {sorted(set(row) - COLS[table])}")
-            for col in sorted(NOT_NULL.get(table, set()) - set(row)):
-                if col not in ("modifie_par", "modifie_le", "archive_le", "resolu_par", "resolu_le"):
-                    problems.append(f"{where} manque {col}")
-            for col, value in row.items():
-                allowed = ENUM.get((table, col))
-                if allowed is not None and value is not None and value not in allowed:
-                    problems.append(f"{where} {col}={value!r} hors {sorted(allowed)}")
-                if col.endswith(("_le", "_le_prevu")) and value is not None and len(str(value)) != 25:
-                    problems.append(f"{where} {col}={value!r} date invalide")
-                if col.endswith("_par") and value is not None and not str(value).startswith(("u-", "s-")):
-                    problems.append(f"{where} {col}={value!r} identifiant invalide")
-            if len(rows) != len(seen[table]):
-                pass
-    # identifiants référencés (vérification grossière des FK par clé)
-    ids = {}
-    for entry in tables:
-        for row in entry["rows"]:
-            if "id" in row:
-                ids.setdefault(entry["table"], set()).add(row["id"])
-    for entry in tables:
-        for n, row in enumerate(entry["rows"], 1):
-            for col, value in row.items():
-                if col.endswith("_id") and not col.startswith(("espace_id",)) and value is not None:
-                    target = col[: -len("_id")]
-                    if target in ids and value not in ids[target] and target not in ("version_source",):
-                        problems.append(f"{name}/{entry['table']}#{n} référence {col}={value!r} inconnue")
 
-print(f"\n{len(problems)} problèmes")
-for p in problems:
-    print(" -", p)
+def row_problems(table, row):
+    if table not in COLS:
+        return [f"table inconnue {table}"]
+    problems = []
+    for col in sorted(set(row) - COLS[table]):
+        problems.append(f"colonne inconnue {col}")
+    for col in sorted(NOT_NULL[table] - set(row)):
+        problems.append(f"manque {col}")
+    for col, value in row.items():
+        if value is None:
+            if col in NON_NULL[table]:
+                problems.append(f"{col} ne peut être null")
+            continue
+        allowed = ENUM.get((table, col))
+        if allowed is not None and (not isinstance(value, str) or value not in allowed):
+            problems.append(f"{col}={value!r} hors énumération {sorted(allowed)}")
+        try:
+            if col == "id" or col == "cle_stable" or col.endswith(("_id", "_par")):
+                validation.canonical_uuid(value)
+            elif col in validation.INSTANTS:
+                if validation.canonical_instant(value) != value:
+                    raise ValueError("instant UTC non canonique")
+            elif col.startswith("date_") or col in {"observe_le", "periode_debut", "periode_fin"}:
+                if not isinstance(value, str) or date.fromisoformat(value).isoformat() != value:
+                    raise ValueError("date civile non canonique")
+        except (ValueError, TypeError) as exc:
+            problems.append(f"{col}={value!r} invalide : {exc}")
+    return problems
+
+
+def pre_audit(tables):
+    return [f"{table} #{n} : {problem}"
+            for table, rows in tables.items() for n, row in enumerate(rows, 1)
+            for problem in row_problems(table, row)]
+
+
+def main():
+    problems = []
+    for name in ("a", "b"):
+        path = FIX / f"espace-{name}.json"
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            for entry in data["tables"]:
+                problems.extend(f"{name}/{p}" for p in pre_audit({entry["table"]: entry["rows"]}))
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / path.name).write_text(json.dumps(data), encoding="utf-8")
+                with closing(db.connect(root / "audit.db")) as conn:
+                    migrations.migrate(conn, SCHEMA)
+                    seed.seeded(conn, root, env="test")
+        except (OSError, ValueError, KeyError, TypeError, seed.SeedError) as exc:
+            problems.append(f"{name} : {exc}")
+    print(f"\n{len(problems)} problèmes")
+    for problem in problems:
+        print(" -", problem)
+    return bool(problems)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
