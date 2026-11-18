@@ -99,7 +99,11 @@ class MigrationTests(unittest.TestCase):
         self.assert_rolled_back()
 
     def assert_rolled_back(self):
+        self.assert_rollback_state()
         self.reopen()
+        self.assert_rollback_state()
+
+    def assert_rollback_state(self):
         self.assertEqual(migrations.applied_versions(self.connection), ["0001"])
         self.assertEqual([tuple(row) for row in self.connection.execute("SELECT * FROM saved")], [(1,)])
         self.assertNotIn("discarded", db.table_names(self.connection))
