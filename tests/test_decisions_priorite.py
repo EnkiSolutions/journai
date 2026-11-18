@@ -1,4 +1,7 @@
+import shutil
+import tempfile
 import unittest
+from pathlib import Path
 
 import test_arbitrage_donnees as arb
 from test_arbitrage_donnees import CHECK, FK, NOW, uid
@@ -118,6 +121,65 @@ class DecisionPrioriteTests(unittest.TestCase):
         self.assertEqual(self.snapshots(), self.expected)
         self.persisted(self.expected)
 
+    def refused_space(self, operation):
+        before = self.snapshots()
+        with self.assertRaisesRegex(arb.sqlite3.IntegrityError, 'decisions dans des espaces differents') as error:
+            operation()
+        self.assertEqual(error.exception.sqlite_errorname, 'SQLITE_CONSTRAINT_TRIGGER')
+        self.assertEqual(self.snapshots(), before)
+
+    def test_remplacements_inter_espaces_et_deplacements_refuses(self):
+        first = self.decision(1)
+        second = self.decision(2, replaces=first['id'])
+        other = self.decision(3, action=3, project=4, space=2, estimation=4, evaluation=4)
+        spare = self.decision(4)
+        for row in (first, second, other, spare):
+            self.add_decision(row)
+        to_other = dict(action_id=uid(5, 3), projet_id=uid(4, 4), espace_id=uid(2, 2),
+                        estimation_retenue_id=uid(6, 4), evaluation_retenue_id=uid(7, 4))
+        to_first = dict(action_id=uid(5, 1), projet_id=uid(4, 1), espace_id=uid(2, 1),
+                        estimation_retenue_id=uid(6, 1), evaluation_retenue_id=uid(7, 1))
+        self.change_decision(spare, to_other)
+        self.change_decision(spare, to_first)
+        for label, operation in (
+            ('insertion', lambda: self.insert(TABLE, self.decision(5, replaces=other['id']))),
+            ('lien', lambda: self.update(TABLE, second['id'], {'remplace_decision_id': other['id']})),
+            ('successeur', lambda: self.update(TABLE, second['id'], to_other)),
+            ('prédécesseur', lambda: self.update(TABLE, first['id'], to_other)),
+        ):
+            with self.subTest(mutation=label):
+                self.refused_space(operation)
+                self.assertEqual(self.connection.execute('PRAGMA foreign_key_check').fetchall(), [])
+        self.persisted(self.expected)
+
+    def test_references_differees_controlees(self):
+        c = self.connection
+        c.commit()
+        c.execute('PRAGMA defer_foreign_keys = ON')
+        future = uid(8, 10)
+        successor = self.decision(1, replaces=future)
+        self.add_decision(successor)
+        wrong = self.decision(2, action=3, project=4, space=2, estimation=4, evaluation=4)
+        self.add_decision(wrong)
+        self.refused_space(lambda: self.insert(TABLE, dict(wrong, id=future)))
+        self.refused_space(lambda: self.update(TABLE, wrong['id'], {'id': future}))
+        self.add_decision(self.decision(10))
+        self.assertEqual(c.execute('PRAGMA foreign_key_check').fetchall(), [])
+        self.persisted(self.expected)
+
+    def test_lien_differe_modifie_avant_insertion_du_predecesseur(self):
+        successor = self.decision(1)
+        self.add_decision(successor)
+        self.connection.commit()
+        self.connection.execute('PRAGMA defer_foreign_keys = ON')
+        future = uid(8, 10)
+        self.change_decision(successor, {'remplace_decision_id': future})
+        self.refused_space(lambda: self.insert(TABLE, self.decision(
+            10, action=3, project=4, space=2, estimation=4, evaluation=4)))
+        self.add_decision(self.decision(10))
+        self.assertEqual(self.connection.execute('PRAGMA foreign_key_check').fetchall(), [])
+        self.persisted(self.expected)
+
     def test_chaine_de_remplacement_et_suppressions(self):
         first = self.decision(1)
         second = self.decision(2, estimation=2, evaluation=2, replaces=first['id'])
@@ -137,6 +199,86 @@ class DecisionPrioriteTests(unittest.TestCase):
                 self.refused('SQLITE_CONSTRAINT_TRIGGER', lambda: self.connection.execute(f'DELETE FROM {table} WHERE id = ?', (row_id,)))
         self.assertEqual(self.snapshots(), self.expected)
         self.persisted(self.expected)
+
+
+class DecisionEspaceMigrationTests(unittest.TestCase):
+    close = DecisionPrioriteTests.close
+    insert = DecisionPrioriteTests.insert
+    update = DecisionPrioriteTests.update
+    snapshots = DecisionPrioriteTests.snapshots
+    decision = DecisionPrioriteTests.decision
+    add_decision = DecisionPrioriteTests.add_decision
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.old_schema = Path(directory.name) / 'schema_9'
+        self.old_schema.mkdir()
+        for path in arb.SCHEMA.glob('*.sql'):
+            if path.name[:4] <= '0009':
+                shutil.copyfile(path, self.old_schema / path.name)
+        self.path = Path(directory.name) / 'decisions.db'
+        self.connection = arb.db.connect(self.path)
+        self.addCleanup(self.close)
+        c = self.connection
+        self.assertEqual(arb.migrations.migrate(c, self.old_schema), [f'{n:04}' for n in range(1, 10)])
+        for number in (1, 2, 3):
+            c.execute('INSERT INTO utilisateur (id, nom_affiche, email, cree_le) VALUES (?, ?, ?, ?)',
+                      (uid(1, number), f'U{number}', f'u{number}@example.invalid', NOW))
+        for space, action, project, estimate, evaluation in ((1, 1, 1, 1, 1), (2, 3, 4, 4, 4)):
+            c.execute('INSERT INTO espace (id, nom, cree_par, cree_le) VALUES (?, ?, ?, ?)',
+                      (uid(2, space), f'E{space}', uid(1, 1), NOW))
+            c.execute("INSERT INTO structure (id, espace_id, nom, type_structure, cree_par, cree_le) VALUES (?, ?, 'S', 'autre', ?, ?)",
+                      (uid(3, space), uid(2, space), uid(1, 1), NOW))
+            c.execute("INSERT INTO projet (id, espace_id, structure_pilote_id, nom, finalite, responsable_id, cree_par, cree_le) VALUES (?, ?, ?, 'P', 'F', ?, ?, ?)",
+                      (uid(4, project), uid(2, space), uid(3, space), uid(1, 1), uid(1, 1), NOW))
+            c.execute("INSERT INTO action (id, espace_id, projet_pilote_id, titre, description, nature, responsable_id, critere_acceptation, cree_par, cree_le) VALUES (?, ?, ?, 'A', 'D', 'livrable', ?, 'C', ?, ?)",
+                      (uid(5, action), uid(2, space), uid(4, project), uid(1, 1), uid(1, 1), NOW))
+            c.execute("INSERT INTO action_projet (action_id, projet_id, espace_id, motif_rattachement) VALUES (?, ?, ?, 'M')",
+                      (uid(5, action), uid(4, project), uid(2, space)))
+            c.execute("INSERT INTO estimation_action (id, action_id, espace_id, auteur_id, complexite_technique, complexite_organisationnelle, incertitude, justification, cree_le) VALUES (?, ?, ?, ?, 'faible', 'moyenne', 'forte', 'E', ?)",
+                      (uid(6, estimate), uid(5, action), uid(2, space), uid(1, 1), NOW))
+            c.execute("INSERT INTO evaluation_action (id, action_id, projet_id, espace_id, auteur_id, importance, impact_attendu, confiance, justification, cree_le) VALUES (?, ?, ?, ?, ?, 'faible', 'moyenne', 'forte', 'E', ?)",
+                      (uid(7, evaluation), uid(5, action), uid(4, project), uid(2, space), uid(1, 1), NOW))
+        c.commit()
+        self.expected = self.snapshots()
+
+    def test_migration_preserves_valid_link_after_reopen(self):
+        first = self.decision(1)
+        second = self.decision(2, replaces=first['id'])
+        for row in (first, second):
+            self.add_decision(row)
+        self.connection.commit()
+        before = self.snapshots()
+        journal = [tuple(row) for row in self.connection.execute('SELECT * FROM schema_migration ORDER BY version')]
+        self.assertEqual(arb.migrations.migrate(self.connection, arb.SCHEMA), ['0010'])
+        self.close()
+        self.connection = arb.db.connect(self.path)
+        self.assertEqual(self.snapshots(), before)
+        rows = [tuple(row) for row in self.connection.execute('SELECT * FROM schema_migration ORDER BY version')]
+        self.assertEqual(rows[:-1], journal)
+        self.assertEqual(rows[-1][0], '0010')
+        self.assertEqual(arb.migrations.migrate(self.connection, arb.SCHEMA), [])
+        self.assertEqual(arb.db.integrity_problems(self.connection), [])
+
+    def test_migration_rejects_existing_cross_space_link_without_changes(self):
+        first = self.decision(1)
+        second = self.decision(2, action=3, project=4, space=2, estimation=4,
+                               evaluation=4, replaces=first['id'])
+        for row in (first, second):
+            self.add_decision(row)
+        self.connection.commit()
+        before = list(self.connection.iterdump())
+        journal = [tuple(row) for row in self.connection.execute('SELECT * FROM schema_migration ORDER BY version')]
+        with self.assertRaisesRegex(arb.migrations.MigrationError, 'decisions_espaces_incoherents'):
+            arb.migrations.migrate(self.connection, arb.SCHEMA)
+        self.close()
+        self.connection = arb.db.connect(self.path)
+        self.assertEqual(list(self.connection.iterdump()), before)
+        self.assertEqual([tuple(row) for row in self.connection.execute(
+            'SELECT * FROM schema_migration ORDER BY version')], journal)
+        self.assertEqual(arb.migrations.applied_versions(self.connection), [f'{n:04}' for n in range(1, 10)])
+        self.assertEqual(arb.db.integrity_problems(self.connection), [])
 
 
 if __name__ == '__main__':
