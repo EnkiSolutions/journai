@@ -21,6 +21,10 @@ class IntegriteNumeriqueTests(unittest.TestCase):
         old.mkdir()
         for file in SCHEMA.glob('000[1-8]_*.sql'):
             shutil.copyfile(file, old / file.name)
+        self.schema_9 = root / 'schema_9'
+        shutil.copytree(old, self.schema_9)
+        for file in SCHEMA.glob('0009_*.sql'):
+            shutil.copyfile(file, self.schema_9 / file.name)
         self.c = db.connect(self.path)
         self.addCleanup(lambda: self.c.close())
         migrations.migrate(self.c, old)
@@ -50,13 +54,13 @@ class IntegriteNumeriqueTests(unittest.TestCase):
     def test_upgrade_preserves_populated_database_and_journal(self):
         rows = {table: [tuple(row) for row in self.c.execute(f'SELECT * FROM {table}')]
                 for table in ('estimation_action', 'mesure_indicateur', 'schema_migration')}
-        self.assertEqual(migrations.migrate(self.c, SCHEMA), ['0009'])
+        self.assertEqual(migrations.migrate(self.c, self.schema_9), ['0009'])
         self.reopen()
         for table in ('estimation_action', 'mesure_indicateur'):
             self.assertEqual([tuple(row) for row in self.c.execute(f'SELECT * FROM {table}')], rows[table])
         self.assertEqual([tuple(row) for row in self.c.execute("SELECT * FROM schema_migration WHERE version < '0009' ORDER BY version")], rows['schema_migration'])
         before = list(self.c.iterdump())
-        self.assertEqual(migrations.migrate(self.c, SCHEMA), [])
+        self.assertEqual(migrations.migrate(self.c, self.schema_9), [])
         self.assertEqual(list(self.c.iterdump()), before)
         self.assertEqual(db.integrity_problems(self.c), [])
 
@@ -72,7 +76,7 @@ class IntegriteNumeriqueTests(unittest.TestCase):
                 self.c.commit()
                 before = list(self.c.iterdump())
                 with self.assertRaisesRegex(migrations.MigrationError, 'donnees_numeriques_invalides'):
-                    migrations.migrate(self.c, SCHEMA)
+                    migrations.migrate(self.c, self.schema_9)
                 self.reopen()
                 self.assertEqual(list(self.c.iterdump()), before)
                 self.assertEqual(migrations.applied_versions(self.c), [f'{n:04}' for n in range(1, 9)])
@@ -81,7 +85,7 @@ class IntegriteNumeriqueTests(unittest.TestCase):
                 self.c.commit()
 
     def test_insert_update_guards_and_persistence(self):
-        migrations.migrate(self.c, SCHEMA)
+        migrations.migrate(self.c, self.schema_9)
         self.estimation('egal', 2, 2, 3, 3)
         self.estimation('partiel', 2, None, None, 3)
         self.mesure('entier', 2)

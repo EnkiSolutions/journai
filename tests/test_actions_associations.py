@@ -23,7 +23,7 @@ class ActionAssociationsTests(unittest.TestCase):
         self.addCleanup(self.close)
         c = self.connection
         self.assertEqual(c.execute('PRAGMA foreign_keys').fetchone()[0], 1)
-        self.assertEqual(migrations.migrate(c, SCHEMA), [f'{n:04}' for n in range(1, 10)])
+        self.assertEqual(migrations.migrate(c, SCHEMA), [f'{n:04}' for n in range(1, 11)])
         c.execute('INSERT INTO utilisateur (id, nom_affiche, email, cree_le) VALUES (?, ?, ?, ?)',
                   (uid(1, 1), 'Test', 'test@example.invalid', NOW))
         for space in (1, 2):
