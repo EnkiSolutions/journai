@@ -77,7 +77,11 @@ class StartupTests(unittest.TestCase):
                             response = client.getresponse()
                             body = response.read()
                             self.assertEqual(response.status, 200)
-                            self.assertEqual(json.loads(body)["data"][0]["id"], PROJECT)
+                            payload = json.loads(body)
+                            projects = payload["data"]
+                            self.assertEqual(len(projects), payload["meta"]["total"])
+                            self.assertEqual(projects[0]["id"], PROJECT)
+                            self.assertNotIn(OTHER_PROJECT, {project["id"] for project in projects})
                         break
                     except (ConnectionRefusedError, ConnectionResetError):
                         if process.poll() is not None or time.monotonic() >= deadline:

@@ -145,11 +145,13 @@ class MigrationTests(unittest.TestCase):
     def test_explicit_transaction_cannot_escape_rollback(self):
         self.script("0001_first.sql", "CREATE TABLE saved (id INTEGER); INSERT INTO saved VALUES (1);")
         migrations.migrate(self.connection, self.scripts)
-        self.script("0002_bad.sql", "CREATE TABLE discarded (id INTEGER);\n"
-                    "INSERT INTO saved VALUES (2);\n/* comment */ COMMIT;\nINSERT INTO absent VALUES (3);")
-        with self.assertRaisesRegex(migrations.MigrationError, "transaction interdite"):
-            migrations.migrate(self.connection, self.scripts)
-        self.assert_rolled_back()
+        for command in ("BEGIN", "COMMIT", "END", "ROLLBACK", "SAVEPOINT test", "RELEASE test"):
+            with self.subTest(command=command):
+                self.script("0002_bad.sql", "CREATE TABLE discarded (id INTEGER);\n"
+                            f"INSERT INTO saved VALUES (2);\n/* comment */ {command};\nINSERT INTO absent VALUES (3);")
+                with self.assertRaisesRegex(migrations.MigrationError, "transaction interdite"):
+                    migrations.migrate(self.connection, self.scripts)
+                self.assert_rolled_back()
 
     def test_statement_splitting_preserves_strings_comments_and_triggers(self):
         sql = "CREATE TABLE x (s TEXT); INSERT INTO x VALUES ('a; -- b');\n" \

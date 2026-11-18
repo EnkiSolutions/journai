@@ -91,6 +91,25 @@ class HttpTests(unittest.TestCase):
         with closing(sqlite3.connect(self.path)) as connection:
             return list(connection.iterdump())
 
+    def test_internal_errors_are_logged_without_sensitive_data(self):
+        secret = "synthetic-sensitive-data"
+        with self.assertLogs("journai.api", level="ERROR") as logs:
+            self.assertEqual(self.request("/api/v1/projet?private=" + secret, auth=False)[0], 401)
+            with patch("journai.api.read", side_effect=ValueError(secret)):
+                status, _, body = self.request("/api/v1/projet?private=" + secret,
+                                               headers=[("X-Synthetic", secret)])
+            try:
+                raise RuntimeError(secret)
+            except RuntimeError:
+                self.server.handle_error(None, (secret, 123))
+        self.assertEqual(status, 500)
+        self.assertEqual(json.loads(body)["error"]["code"], "erreur_interne")
+        self.assertEqual(logs.output, [
+            "ERROR:journai.api:Erreur interne HTTP : ValueError",
+            "ERROR:journai.api:Erreur interne HTTP : RuntimeError"])
+        self.assertNotIn(secret, body.decode())
+        self.assertNotIn(self.auth, " ".join(logs.output))
+
     def test_persistent_connection_does_not_block_another_client(self):
         with closing(http.client.HTTPConnection(*self.server.server_address, timeout=1)) as first:
             first.request("GET", "/api/v1/projet", headers={"Authorization": self.auth})

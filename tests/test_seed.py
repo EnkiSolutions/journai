@@ -124,6 +124,7 @@ class SeedTests(unittest.TestCase):
                 with self.subTest(failure=failure):
                     with self.assertRaisesRegex(seed.SeedError, message):
                         seed.seeded(connection, self.fixtures, env="test", replace=True, allow_replace=True)
+                    self.assertEqual(list(connection.iterdump()), original)
                     self.assertEqual(self.snapshot(), original)
                     connection.close()
                     connection = db.connect(self.path, create=False)

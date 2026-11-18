@@ -114,7 +114,8 @@ class QueryTests(unittest.TestCase):
         sql = """INSERT INTO parcours (id, espace_id, projet_id, nom, finalite, responsable_id, cree_par, cree_le)
                  SELECT ?, espace_id, projet_id, nom, finalite, responsable_id, cree_par, cree_le FROM parcours WHERE id=?"""
         self.connection.executemany(sql, ((f"99999999-0000-4000-8000-{i:012d}", source) for i in range(501)))
-        self.connection.execute(sql, ("88888888-0000-4000-8000-000000000001", foreign[0]))
+        foreign_copy = "88888888-0000-4000-8000-000000000001"
+        self.connection.execute(sql, (foreign_copy, foreign[0]))
         result = self.query("projet", {"include": "parcours"}, identifiant=PROJECT_A)
         meta = result["included_meta"]["parcours"]
         self.assertEqual(meta, {"ressource": "parcours", "total": 502, "limit": 500, "offset": 0, "espace_id": SPACE})
@@ -127,7 +128,9 @@ class QueryTests(unittest.TestCase):
         self.assertEqual(len(rest["data"]), 2)
         self.assertTrue(all(row["espace_id"] == SPACE and row["projet_id"] == PROJECT_A for row in rest["data"]))
         self.assertFalse({row["id"] for row in first} & {row["id"] for row in rest["data"]})
-        self.assertNotIn(foreign[0], {row["id"] for row in first + rest["data"]})
+        self.assertNotIn(foreign_copy, {row["id"] for row in first + rest["data"]})
+        unfiltered = self.query("parcours", {"id": foreign_copy})
+        self.assertEqual(unfiltered["data"], [])
 
     def test_cross_project_association_requires_both_endpoints(self):
         other_operation = self.connection.execute("SELECT id FROM operation WHERE projet_pilote_id=?", (PROJECT_B,)).fetchone()[0]

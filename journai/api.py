@@ -1,7 +1,9 @@
 """Transport HTTP de lecture F01 ; aucune opération d'écriture."""
 
 import json
+import logging
 import re
+import sys
 import sqlite3
 from contextlib import closing
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -31,7 +33,7 @@ class ApiServer(ThreadingHTTPServer):
         super().__init__((config.host, config.port), ApiHandler)
 
     def handle_error(self, request, client_address):
-        pass
+        logging.getLogger(__name__).error("Erreur interne HTTP : %s", type(sys.exception()).__name__)
 
 
 class ApiHandler(BaseHTTPRequestHandler):
@@ -124,7 +126,8 @@ class ApiHandler(BaseHTTPRequestHandler):
                 self._read(connection, context)
         except (AuthError, QueryError) as exc:
             self._error(exc.status, getattr(exc, "fields", ()))
-        except Exception:
+        except Exception as exc:
+            logging.getLogger(__name__).error("Erreur interne HTTP : %s", type(exc).__name__)
             self._error(500)
 
     def _read(self, connection, context):
