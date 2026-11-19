@@ -113,7 +113,14 @@ class HttpTests(unittest.TestCase):
                 connection.putheader(name, value)
             if body is not None:
                 connection.putheader("Content-Length", str(len(body)))
-            connection.endheaders(body)
+            if body is None:
+                connection.endheaders()
+            else:
+                # Send headers and body together before a rejecting server can close.
+                with patch.object(connection, "send") as send:
+                    connection.endheaders()
+                send.assert_called_once()
+                connection.send(send.call_args.args[0] + body)
             response = connection.getresponse()
             data = response.read()
             return response.status, dict(response.getheaders()), data
