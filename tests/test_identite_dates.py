@@ -104,6 +104,59 @@ class IdentityTimeTests(unittest.TestCase):
         finally:
             connection.close()
 
+    def test_integer_values_are_validated_in_common_normalization(self):
+        for value in (1.5, 1.0, True, "1", None):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    validation.normalize_values({"revision": value}, set(), {"revision"})
+        for value in (0, 1, -1, None):
+            with self.subTest(nullable_value=value):
+                values = {"volume_estime": value}
+                validation.normalize_values(values, {"volume_estime"}, {"volume_estime"})
+                self.assertEqual(values["volume_estime"], value)
+
+    def test_integer_seed_values_rejected_before_replace_writes(self):
+        connection = db.connect(self.path)
+        seed.seeded(connection, self.fixtures, env="test")
+        connection.close()
+        original = self.snapshot()
+        for location in ("insert", "update"):
+            for value in (1.5, 1.0, True, "1", None):
+                with self.subTest(location=location, value=value):
+                    data = copy.deepcopy(self.base)
+                    if location == "insert":
+                        self.row(data, "parcours")["revision"] = value
+                    else:
+                        data["updates"][0]["set"]["revision"] = value
+                    self.save(data)
+                    connection = db.connect(self.path)
+                    statements = []
+                    connection.set_trace_callback(statements.append)
+                    try:
+                        with self.assertRaises(seed.SeedError):
+                            seed.seeded(connection, self.fixtures, env="test", replace=True, allow_replace=True)
+                        self.assertFalse(any(s.lstrip().upper().startswith(("UPDATE ", "DELETE ", "INSERT "))
+                                             for s in statements))
+                    finally:
+                        connection.close()
+                    self.assertEqual(self.snapshot(), original)
+
+        data = copy.deepcopy(self.base)
+        self.row(data, "parcours")["revision"] = 2
+        self.row(data, "occurrence_contact")["volume_estime"] = None
+        data["updates"][0]["set"]["revision"] = 3
+        self.save(data)
+        connection = db.connect(self.path)
+        try:
+            seed.seeded(connection, self.fixtures, env="test", replace=True, allow_replace=True)
+            self.assertEqual(connection.execute("SELECT revision FROM parcours WHERE id = ?",
+                                                (data["updates"][0]["id"],)).fetchone()[0], 3)
+            self.assertIsNone(connection.execute("SELECT volume_estime FROM occurrence_contact WHERE id = ?",
+                                                 (self.row(data, "occurrence_contact")["id"],)).fetchone()[0])
+            self.assertEqual(db.integrity_problems(connection), [])
+        finally:
+            connection.close()
+
     def test_chronological_order_after_normalization(self):
         early = "2026-01-02T00:30:00+02:00"
         late = "2026-01-01T23:00:00+00:00"

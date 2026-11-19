@@ -33,6 +33,10 @@ def canonical_instant(value: object) -> str:
 
 def normalize_values(values: dict, nullable: set[str], integer_columns: set[str]) -> None:
     for key, value in values.items():
+        if key in integer_columns:
+            if type(value) is not int and not (value is None and key in nullable):
+                raise ValueError(f"{key} doit être un entier JSON")
+            continue
         is_uuid = key not in integer_columns and (
             key in {"id", "cle_stable"} or key.endswith(("_id", "_par"))
         )
