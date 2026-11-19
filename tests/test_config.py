@@ -29,9 +29,10 @@ class ConfigTests(unittest.TestCase):
 
     def test_defaults_and_real_example(self):
         expected = Config("dev", Path("var/journai.db"), "127.0.0.1", 8000,
-                          "INFO", Path("journai/migrations"), "")
+                          "INFO", Path(__file__).resolve().parents[1] / "journai" / "migrations", "")
         self.assertEqual(load_config(), expected)
-        self.assertEqual(load_config(EXAMPLE), expected)
+        self.assertEqual(load_config(EXAMPLE), Config("dev", Path("var/journai.db"), "127.0.0.1", 8000,
+                                                     "INFO", Path("journai/migrations"), ""))
         self.assertEqual(set(json.loads(EXAMPLE.read_text(encoding="utf-8"))),
                          {"env", "db", "host", "port", "log_level", "schema_dir", "cors_origin"})
 
@@ -69,8 +70,9 @@ class ConfigTests(unittest.TestCase):
             self.write_json("config/journai.json", {key: "local/path"})
             self.assertEqual(getattr(load_config(), attribute), Path("local/path"))
             self.write_json("config/journai.json", {})
-            default = "var/journai.db" if key == "db" else "journai/migrations"
-            self.assertEqual(getattr(load_config(), attribute), Path(default))
+            default = (Path("var/journai.db") if key == "db"
+                       else Path(__file__).resolve().parents[1] / "journai" / "migrations")
+            self.assertEqual(getattr(load_config(), attribute), default)
 
     def test_path_priorities_validate_only_the_selected_value(self):
         for key, env_key, attribute in (("db", "JOURNAI_DB", "db_path"),

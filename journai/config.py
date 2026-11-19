@@ -15,7 +15,7 @@ DEFAULT_DB_PATH = "var/journai.db"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 DEFAULT_LOG_LEVEL = "INFO"
-DEFAULT_SCHEMA_DIR = "journai/migrations"
+DEFAULT_SCHEMA_DIR = str(Path(__file__).resolve().parent / "migrations")
 DEFAULT_CORS_ORIGIN = ""
 
 

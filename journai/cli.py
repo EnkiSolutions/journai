@@ -20,7 +20,7 @@ from contextlib import closing
 from pathlib import Path
 
 from journai import db, migrations, seed
-from journai.config import Config, DEFAULT_SCHEMA_DIR, load_config
+from journai.config import Config, load_config
 
 
 def selftest() -> None:
@@ -104,10 +104,6 @@ def main(argv: list[str] | None = None) -> int:
             from journai.api import serve
             serve(config)
             return 0
-        schema_dir = config.schema_dir
-        if schema_dir == Path(DEFAULT_SCHEMA_DIR):
-            schema_dir = Path(migrations.__file__).parent / "migrations"
-
         if args.command == "status":
             # La lecture ne crée ni base ni journal et ne modifie pas le mode SQLite.
             connection = sqlite3.connect(config.db_path.resolve().as_uri() + "?mode=ro", uri=True)
@@ -116,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
             connection = db.connect(config.db_path)
         try:
             if args.command in (None, "init"):
-                applied = migrations.migrate(connection, schema_dir)
+                applied = migrations.migrate(connection, config.schema_dir)
                 logging.info("Migrations appliquées : %s", ", ".join(applied) or "aucune")
             if args.command in (None, "seed"):
                 counts = seed.seeded(connection, env=config.env, replace=getattr(args, "replace", False),

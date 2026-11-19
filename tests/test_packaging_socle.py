@@ -53,6 +53,47 @@ class PackagingSocleTests(unittest.TestCase):
             with self.subTest(metadata=invalid), self.assertRaises(AssertionError):
                 self.assert_dev_metadata(invalid)
 
+    def check_relative_schema_overrides(self, root, venv, python, env):
+        console = venv / ("Scripts/journai.exe" if os.name == "nt" else "bin/journai")
+        for entry in ("console", "module"):
+            for source in ("default", "environment", "local", "example", "explicit", "argument"):
+                if (entry == "module" and source == "explicit") or (entry == "console" and source == "argument"):
+                    continue
+                with self.subTest(entry=entry, source=source):
+                    work = root / f"relative-{entry}-{source}"
+                    schema = work / "journai" / "migrations"
+                    schema.mkdir(parents=True)
+                    (schema / "0001_local.sql").write_text(
+                        "CREATE TABLE local_override (id INTEGER);", encoding="utf-8")
+                    db_path = work / "data.db"
+                    run_env = {**env, "PYTHONUTF8": "1", "JOURNAI_DB": str(db_path)}
+                    command = ([str(console), "init"] if entry == "console" else
+                               [str(python), "-I", "-m", "journai.migrations"])
+                    if source in ("local", "example", "explicit"):
+                        path = (work / "config" / ("journai.json" if source == "local" else
+                                                   "journai.example.json") if source != "explicit"
+                                else work / "explicit.json")
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_text(json.dumps({"schema_dir": "journai/migrations"}), encoding="utf-8")
+                        if source == "explicit":
+                            command = [str(console), "--config", str(path), "init"]
+                    elif source == "environment":
+                        run_env["JOURNAI_SCHEMA_DIR"] = "journai/migrations"
+                    elif source == "argument":
+                        run_env["JOURNAI_SCHEMA_DIR"] = str(root / "env-schema")
+                        command += ["--schema-dir", "journai/migrations"]
+                    result = subprocess.run(command, cwd=work, env=run_env, capture_output=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    with closing(sqlite3.connect(db_path)) as connection:
+                        versions = connection.execute("SELECT version FROM schema_migration ORDER BY version").fetchall()
+                        local = connection.execute("SELECT name FROM sqlite_master WHERE name='local_override'").fetchone()
+                        if source == "default":
+                            self.assertEqual([v[0] for v in versions], [f"{v:04d}" for v in range(1, 11)])
+                            self.assertIsNone(local)
+                        else:
+                            self.assertEqual(versions, [("0001",)])
+                            self.assertIsNotNone(local)
+
     def test_wheel_contents_and_installed_migrations_and_seed(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -150,6 +191,7 @@ class PackagingSocleTests(unittest.TestCase):
             python = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
             subprocess.run([str(python), "-I", "-m", "pip", "--isolated", "install", "--no-index",
                             "--no-deps", str(wheel)], cwd=root, env=env, check=True)
+            self.check_relative_schema_overrides(root, venv, python, env)
             self.assertFalse((overrides[0].parent / "fixtures").exists())
             packaged = [json.loads((target / "journai" / "fixtures" / name).read_text(encoding="utf-8"))
                         for name in sorted(FIXTURES)]
