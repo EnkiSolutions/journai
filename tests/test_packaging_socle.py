@@ -192,6 +192,19 @@ class PackagingSocleTests(unittest.TestCase):
             subprocess.run([str(python), "-I", "-m", "pip", "--isolated", "install", "--no-index",
                             "--no-deps", str(wheel)], cwd=root, env=env, check=True)
             self.check_relative_schema_overrides(root, venv, python, env)
+            example_work = root / "real-example"
+            example_work.mkdir()
+            example_db = root / "example.db"
+            console = venv / ("Scripts/journai.exe" if os.name == "nt" else "bin/journai")
+            result = subprocess.run(
+                [str(console), "--config", str(ROOT / "config" / "journai.example.json"), "init"],
+                cwd=example_work, env={**env, "JOURNAI_DB": str(example_db)}, capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            with closing(sqlite3.connect(example_db)) as connection:
+                versions = connection.execute("SELECT version FROM schema_migration ORDER BY version").fetchall()
+                self.assertEqual([version[0] for version in versions],
+                                 sorted(name.split("_", 1)[0] for name in MIGRATIONS))
             self.assertFalse((overrides[0].parent / "fixtures").exists())
             packaged = [json.loads((target / "journai" / "fixtures" / name).read_text(encoding="utf-8"))
                         for name in sorted(FIXTURES)]

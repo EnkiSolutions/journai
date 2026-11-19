@@ -253,9 +253,14 @@ class IdentityTimeTests(unittest.TestCase):
                 try:
                     with self.assertRaises(seed.SeedError):
                         seed.seeded(connection, self.fixtures, env="test", replace=True, allow_replace=True)
+                    wrote = any(s.lstrip().upper().startswith(("UPDATE ", "DELETE ", "INSERT "))
+                                for s in statements)
                     if kind in {"id", "reference", "integer_reference", "instant"}:
-                        self.assertFalse(any(s.lstrip().upper().startswith(("UPDATE ", "DELETE ", "INSERT "))
-                                             for s in statements))
+                        self.assertFalse(wrote)
+                    else:
+                        self.assertTrue(wrote)
+                        self.assertEqual(list(connection.iterdump()), original)
+                        self.assertEqual(db.integrity_problems(connection), [])
                 finally:
                     connection.close()
                 self.assertEqual(self.snapshot(), original)

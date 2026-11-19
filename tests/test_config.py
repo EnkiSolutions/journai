@@ -31,10 +31,9 @@ class ConfigTests(unittest.TestCase):
         expected = Config("dev", Path("var/journai.db"), "127.0.0.1", 8000,
                           "INFO", Path(__file__).resolve().parents[1] / "journai" / "migrations", "")
         self.assertEqual(load_config(), expected)
-        self.assertEqual(load_config(EXAMPLE), Config("dev", Path("var/journai.db"), "127.0.0.1", 8000,
-                                                     "INFO", Path("journai/migrations"), ""))
+        self.assertEqual(load_config(EXAMPLE), expected)
         self.assertEqual(set(json.loads(EXAMPLE.read_text(encoding="utf-8"))),
-                         {"env", "db", "host", "port", "log_level", "schema_dir", "cors_origin"})
+                         {"env", "db", "host", "port", "log_level", "cors_origin"})
 
     def test_priorities_and_explicit_file(self):
         self.write_json("config/journai.example.json", {
