@@ -24,7 +24,7 @@ MIGRATIONS = {
     "0003_operation_ressource_constat.sql", "0004_action_arbitrage.sql",
     "0005_collaboration_pilotage.sql", "0006_versions_courantes.sql",
     "0007_cles_occurrences.sql", "0008_commentaires_espace.sql",
-    "0009_integrite_numerique.sql", "0010_decisions_espace.sql", "0011_types_charges_couts.sql",
+    "0009_integrite_numerique.sql", "0010_decisions_espace.sql", "0011_charge_cout_numeriques.sql",
 }
 FIXTURES = {"espace-a.json", "espace-b.json"}
 
