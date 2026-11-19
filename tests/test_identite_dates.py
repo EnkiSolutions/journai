@@ -115,47 +115,68 @@ class IdentityTimeTests(unittest.TestCase):
                 validation.normalize_values(values, {"volume_estime"}, {"volume_estime"})
                 self.assertEqual(values["volume_estime"], value)
 
-    def test_integer_seed_values_rejected_before_replace_writes(self):
+    def test_integer_seed_values_rejected_before_any_writes(self):
         connection = db.connect(self.path)
-        seed.seeded(connection, self.fixtures, env="test")
-        connection.close()
-        original = self.snapshot()
-        for location in ("insert", "update"):
-            for value in (1.5, 1.0, True, "1", None):
-                with self.subTest(location=location, value=value):
-                    data = copy.deepcopy(self.base)
-                    if location == "insert":
-                        self.row(data, "parcours")["revision"] = value
-                    else:
-                        data["updates"][0]["set"]["revision"] = value
-                    self.save(data)
-                    connection = db.connect(self.path)
-                    statements = []
-                    connection.set_trace_callback(statements.append)
-                    try:
-                        with self.assertRaises(seed.SeedError):
-                            seed.seeded(connection, self.fixtures, env="test", replace=True, allow_replace=True)
-                        self.assertFalse(any(s.lstrip().upper().startswith(("UPDATE ", "DELETE ", "INSERT "))
-                                             for s in statements))
-                    finally:
-                        connection.close()
-                    self.assertEqual(self.snapshot(), original)
+        try:
+            for populated in (False, True):
+                if populated:
+                    self.save(self.base)
+                    seed.seeded(connection, self.fixtures, env="test")
+                original = self.snapshot()
+                for location in ("insert", "update"):
+                    for column, value in (("revision", 1.5), ("volume_estime", 2.5),
+                                          ("revision", 1.0), ("revision", True), ("revision", "1"),
+                                          ("revision", None), ("revision", 2**63)):
+                        with self.subTest(populated=populated, location=location, column=column, value=value):
+                            data = copy.deepcopy(self.base)
+                            row = self.row(data, "occurrence_contact")
+                            if location == "insert":
+                                row[column] = value
+                            else:
+                                data["updates"].append({"table": "occurrence_contact", "id": row["id"],
+                                                        "set": {column: value}})
+                            self.save(data)
+                            statements = []
+                            connection.set_trace_callback(statements.append)
+                            try:
+                                with self.assertRaises(seed.SeedError):
+                                    seed.seeded(connection, self.fixtures, env="test", replace=populated,
+                                                allow_replace=populated)
+                            finally:
+                                connection.set_trace_callback(None)
+                            self.assertFalse(any(s.lstrip().upper().startswith(("UPDATE ", "DELETE ", "INSERT "))
+                                                 for s in statements))
+                            self.assertEqual(list(connection.iterdump()), original)
+                            self.assertEqual(self.snapshot(), original)
+        finally:
+            connection.close()
 
+    def test_integer_and_nullable_seed_values_preserve_real_fraction(self):
         data = copy.deepcopy(self.base)
-        self.row(data, "parcours")["revision"] = 2
-        self.row(data, "occurrence_contact")["volume_estime"] = None
-        data["updates"][0]["set"]["revision"] = 3
+        rows = next(entry["rows"] for entry in data["tables"] if entry["table"] == "occurrence_contact")
+        rows[0].update(revision=2, volume_estime=None)
+        rows[1].update(revision=3, volume_estime=5)
+        data["updates"].extend([
+            {"table": "occurrence_contact", "id": rows[0]["id"], "set": {"volume_estime": 6}},
+            {"table": "occurrence_contact", "id": rows[1]["id"], "set": {"volume_estime": None, "revision": 4}},
+        ])
+        measure = self.row(data, "mesure_indicateur")
+        measure["valeur"] = 1.5
         self.save(data)
         connection = db.connect(self.path)
         try:
-            seed.seeded(connection, self.fixtures, env="test", replace=True, allow_replace=True)
-            self.assertEqual(connection.execute("SELECT revision FROM parcours WHERE id = ?",
-                                                (data["updates"][0]["id"],)).fetchone()[0], 3)
-            self.assertIsNone(connection.execute("SELECT volume_estime FROM occurrence_contact WHERE id = ?",
-                                                 (self.row(data, "occurrence_contact")["id"],)).fetchone()[0])
+            seed.seeded(connection, self.fixtures, env="test")
+            for row, expected in zip(rows[:2], ((2, 6), (4, None))):
+                self.assertEqual(tuple(connection.execute(
+                    "SELECT revision, volume_estime FROM occurrence_contact WHERE id = ?", (row["id"],)
+                ).fetchone()), expected)
+            self.assertEqual(connection.execute("SELECT valeur FROM mesure_indicateur WHERE id = ?",
+                                                (measure["id"],)).fetchone()[0], 1.5)
             self.assertEqual(db.integrity_problems(connection), [])
+            snapshot = list(connection.iterdump())
         finally:
             connection.close()
+        self.assertEqual(self.snapshot(), snapshot)
 
     def test_chronological_order_after_normalization(self):
         early = "2026-01-02T00:30:00+02:00"
