@@ -1,0 +1,1160 @@
+{
+  "env": "dev",
+  "tables": [
+    {
+      "table": "utilisateur",
+      "rows": [
+        {
+          "id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "nom_affiche": "Admin Synthétique",
+          "email": "admin@synthese.test",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00"
+        },
+        {
+          "id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "nom_affiche": "Contributeuse Synthétique",
+          "email": "contributeur@synthese.test",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00"
+        }
+      ]
+    },
+    {
+      "table": "espace",
+      "rows": [
+        {
+          "id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "nom": "Espace Santé Service",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00"
+        }
+      ]
+    },
+    {
+      "table": "membre_espace",
+      "rows": [
+        {
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "utilisateur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "role": "administrateur"
+        },
+        {
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "utilisateur_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "role": "contributeur"
+        }
+      ]
+    },
+    {
+      "table": "structure",
+      "rows": [
+        {
+          "id": "9642bf50-4838-54ca-8c3b-0cce0fd6f6c6",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "nom": "Agglomération Synthétique",
+          "type_structure": "collectivite",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "bc071bfc-28cf-5e89-938c-baeb60bf13c7",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "nom": "Maison des Services",
+          "type_structure": "association",
+          "cree_par": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "projet",
+      "rows": [
+        {
+          "id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "structure_pilote_id": "9642bf50-4838-54ca-8c3b-0cce0fd6f6c6",
+          "nom": "Parcours Orientation 2026",
+          "finalite": "Réduire les ruptures de parcours des publics éloignés du service public.",
+          "responsable_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "028ef5b1-354b-5ca3-b352-b177b47a4852",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "structure_pilote_id": "bc071bfc-28cf-5e89-938c-baeb60bf13c7",
+          "nom": "Appui Numérique Quotidien",
+          "finalite": "Rendre l'accès aux démarches dématérialisées compris et tenu.",
+          "responsable_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_par": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "projet_structure",
+      "rows": [
+        {
+          "projet_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "structure_id": "9642bf50-4838-54ca-8c3b-0cce0fd6f6c6",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "role_dans_projet": "pilote"
+        },
+        {
+          "projet_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "structure_id": "bc071bfc-28cf-5e89-938c-baeb60bf13c7",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "role_dans_projet": "contributeur"
+        },
+        {
+          "projet_id": "028ef5b1-354b-5ca3-b352-b177b47a4852",
+          "structure_id": "bc071bfc-28cf-5e89-938c-baeb60bf13c7",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "role_dans_projet": "pilote"
+        }
+      ]
+    },
+    {
+      "table": "membre_projet",
+      "rows": [
+        {
+          "projet_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "utilisateur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "role": "pilote",
+          "capacite_hebdomadaire_h": 2
+        },
+        {
+          "projet_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "utilisateur_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "role": "contributeur",
+          "capacite_hebdomadaire_h": 6
+        },
+        {
+          "projet_id": "028ef5b1-354b-5ca3-b352-b177b47a4852",
+          "utilisateur_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "role": "pilote"
+        }
+      ]
+    },
+    {
+      "table": "public",
+      "rows": [
+        {
+          "id": "6f255440-6792-5e58-8f75-e20784a7b2d9",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "nom": "Bénéficiaires accueil",
+          "role_interlocuteur": "beneficiaire",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "50abee3c-13a3-58cc-9bb0-a7ce2db91744",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "parent_id": "6f255440-6792-5e58-8f75-e20784a7b2d9",
+          "nom": "Jeunes 16-25",
+          "role_interlocuteur": "beneficiaire",
+          "cree_par": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "543900a0-25a1-5d74-975c-e3925534b4b2",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "parent_id": "6f255440-6792-5e58-8f75-e20784a7b2d9",
+          "nom": "Aidants familiaux",
+          "role_interlocuteur": "aidant",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "canal",
+      "rows": [
+        {
+          "id": "0b426827-896b-5ccf-874d-3fc69a404ad2",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "nom": "Guichet physique",
+          "type_canal": "guichet",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "3bf44fea-b72d-5bac-98b8-3544029e80cc",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "nom": "Ligne téléphonique",
+          "type_canal": "telephone",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "point_contact",
+      "rows": [
+        {
+          "id": "805ceab0-c930-56db-9d0e-8309903062ee",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "projet_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "nom": "Comptoir d'accueil",
+          "intention": "Repérer la demande réelle et orienter sans rendez-vous.",
+          "responsable_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "parcours",
+      "rows": [
+        {
+          "id": "2d8a47bf-1ee9-5656-a076-a7122ad258aa",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "projet_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "nom": "Parcours premier accueil",
+          "finalite": "Un accueil compris qui engage le public vers l'étape suivante.",
+          "responsable_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "parcours_public",
+      "rows": [
+        {
+          "parcours_id": "2d8a47bf-1ee9-5656-a076-a7122ad258aa",
+          "public_id": "50abee3c-13a3-58cc-9bb0-a7ce2db91744",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9"
+        },
+        {
+          "parcours_id": "2d8a47bf-1ee9-5656-a076-a7122ad258aa",
+          "public_id": "543900a0-25a1-5d74-975c-e3925534b4b2",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9"
+        }
+      ]
+    },
+    {
+      "table": "version_parcours",
+      "rows": [
+        {
+          "id": "c4b17fb7-d11a-59a8-879e-1b1748870f27",
+          "parcours_id": "2d8a47bf-1ee9-5656-a076-a7122ad258aa",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "numero": 1,
+          "perspective": "observee",
+          "statut": "validee",
+          "valide_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "valide_le": "2026-01-20T10:00:00.000000+00:00",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "8296cadc-1181-5d95-9992-8dc0e67d4500",
+          "parcours_id": "2d8a47bf-1ee9-5656-a076-a7122ad258aa",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "numero": 1,
+          "perspective": "cible",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "c843b409-7a98-57e6-930c-9e5b3d828713",
+          "parcours_id": "2d8a47bf-1ee9-5656-a076-a7122ad258aa",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "numero": 2,
+          "perspective": "cible",
+          "version_source_id": "8296cadc-1181-5d95-9992-8dc0e67d4500",
+          "cree_par": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "etape",
+      "rows": [
+        {
+          "id": "360a4934-dfbf-5ed4-8910-961eae5976a4",
+          "version_parcours_id": "c4b17fb7-d11a-59a8-879e-1b1748870f27",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "cle_stable": "f98cd4ab-6ee6-506a-95f5-8f6ff47d6ce3",
+          "titre": "Premier contact",
+          "objectif_public": "Comprendre la demande et ses pièces.",
+          "ordre_affichage": 1,
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "f1a0f951-0f4d-5a2e-9133-bcdb711899a7",
+          "version_parcours_id": "c4b17fb7-d11a-59a8-879e-1b1748870f27",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "cle_stable": "b42ceed2-78d4-55bc-91c2-0e12bb748ce2",
+          "titre": "Suivi après orientation",
+          "objectif_public": "Tenir le rendez-vous pris et sa réponse.",
+          "ordre_affichage": 2,
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "3970f3f5-95bf-5012-867c-4b2daf68c0a4",
+          "version_parcours_id": "8296cadc-1181-5d95-9992-8dc0e67d4500",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "cle_stable": "f98cd4ab-6ee6-506a-95f5-8f6ff47d6ce3",
+          "titre": "Premier contact",
+          "objectif_public": "Comprendre la demande et ses pièces.",
+          "ordre_affichage": 1,
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "9c291feb-e2d8-5639-9893-084c685d8419",
+          "version_parcours_id": "8296cadc-1181-5d95-9992-8dc0e67d4500",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "cle_stable": "b42ceed2-78d4-55bc-91c2-0e12bb748ce2",
+          "titre": "Suivi après orientation",
+          "objectif_public": "Tenir le rendez-vous pris et sa réponse.",
+          "ordre_affichage": 2,
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "5a33ea0a-9c82-53d9-ae03-572fa8471227",
+          "version_parcours_id": "c843b409-7a98-57e6-930c-9e5b3d828713",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "cle_stable": "f98cd4ab-6ee6-506a-95f5-8f6ff47d6ce3",
+          "titre": "Premier contact",
+          "objectif_public": "Comprendre la demande et ses pièces.",
+          "ordre_affichage": 1,
+          "cree_par": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "cb4a71db-6e75-500e-9a4c-d4b894fa2e64",
+          "version_parcours_id": "c843b409-7a98-57e6-930c-9e5b3d828713",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "cle_stable": "b42ceed2-78d4-55bc-91c2-0e12bb748ce2",
+          "titre": "Suivi après orientation",
+          "objectif_public": "Tenir le rendez-vous pris et sa réponse.",
+          "ordre_affichage": 2,
+          "cree_par": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "transition_etape",
+      "rows": [
+        {
+          "id": "1175f2ed-4ef7-5468-9829-eb1208a14d1e",
+          "version_parcours_id": "c4b17fb7-d11a-59a8-879e-1b1748870f27",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "etape_source_id": "360a4934-dfbf-5ed4-8910-961eae5976a4",
+          "etape_destination_id": "f1a0f951-0f4d-5a2e-9133-bcdb711899a7",
+          "ordre_affichage": 1,
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "b4f6d533-7fb5-53f2-8378-625aa7d48422",
+          "version_parcours_id": "8296cadc-1181-5d95-9992-8dc0e67d4500",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "etape_source_id": "3970f3f5-95bf-5012-867c-4b2daf68c0a4",
+          "etape_destination_id": "9c291feb-e2d8-5639-9893-084c685d8419",
+          "ordre_affichage": 1,
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "d380ea8d-7e34-5d9f-9d54-132c5dd4bf7a",
+          "version_parcours_id": "c843b409-7a98-57e6-930c-9e5b3d828713",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "etape_source_id": "5a33ea0a-9c82-53d9-ae03-572fa8471227",
+          "etape_destination_id": "cb4a71db-6e75-500e-9a4c-d4b894fa2e64",
+          "ordre_affichage": 1,
+          "cree_par": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "occurrence_contact",
+      "rows": [
+        {
+          "id": "aacd8663-99f7-5757-b2ee-9b109643def3",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "etape_id": "360a4934-dfbf-5ed4-8910-961eae5976a4",
+          "point_contact_id": "805ceab0-c930-56db-9d0e-8309903062ee",
+          "canal_id": "0b426827-896b-5ccf-874d-3fc69a404ad2",
+          "cle_stable": "d8c9fdfa-8b05-5e3a-8a17-b4e0bee9ac6c",
+          "besoin_public": "Vérifier une pièce manquante.",
+          "experience_attendue": "Une réponse claire en une visite.",
+          "criticite": "majeure",
+          "etat_operationnel": "assure",
+          "frequence": "quotidienne",
+          "ordre_affichage": 1,
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "1c16c9f1-9006-5691-aa6e-1d0e5b0e07f0",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "etape_id": "3970f3f5-95bf-5012-867c-4b2daf68c0a4",
+          "point_contact_id": "805ceab0-c930-56db-9d0e-8309903062ee",
+          "canal_id": "0b426827-896b-5ccf-874d-3fc69a404ad2",
+          "cle_stable": "d8c9fdfa-8b05-5e3a-8a17-b4e0bee9ac6c",
+          "besoin_public": "Vérifier une pièce manquante.",
+          "experience_attendue": "Une réponse claire en une visite.",
+          "criticite": "majeure",
+          "etat_operationnel": "assure",
+          "frequence": "quotidienne",
+          "ordre_affichage": 1,
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "10b14c0c-7117-50da-8ef9-57226bfc5411",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "etape_id": "5a33ea0a-9c82-53d9-ae03-572fa8471227",
+          "point_contact_id": "805ceab0-c930-56db-9d0e-8309903062ee",
+          "canal_id": "0b426827-896b-5ccf-874d-3fc69a404ad2",
+          "cle_stable": "d8c9fdfa-8b05-5e3a-8a17-b4e0bee9ac6c",
+          "besoin_public": "Vérifier une pièce manquante.",
+          "experience_attendue": "Une réponse claire en une visite.",
+          "criticite": "majeure",
+          "etat_operationnel": "assure",
+          "frequence": "quotidienne",
+          "ordre_affichage": 1,
+          "cree_par": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "4fb2d91b-1d59-5a0e-9dfb-bb116f48a649",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "etape_id": "360a4934-dfbf-5ed4-8910-961eae5976a4",
+          "point_contact_id": "805ceab0-c930-56db-9d0e-8309903062ee",
+          "canal_id": "3bf44fea-b72d-5bac-98b8-3544029e80cc",
+          "cle_stable": "fef9cc01-afe6-5350-927f-5ee7f4e474ba",
+          "besoin_public": "Joindre sans se déplacer.",
+          "experience_attendue": "Un rappel dans la journée.",
+          "criticite": "mineure",
+          "etat_operationnel": "assure",
+          "frequence": "hebdomadaire",
+          "ordre_affichage": 2,
+          "cree_par": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "3422e4a7-c424-5cee-bd06-6539c1b88e1f",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "etape_id": "f1a0f951-0f4d-5a2e-9133-bcdb711899a7",
+          "point_contact_id": "805ceab0-c930-56db-9d0e-8309903062ee",
+          "canal_id": "3bf44fea-b72d-5bac-98b8-3544029e80cc",
+          "cle_stable": "163e3a52-f2fe-5be9-91fd-7a1ac17697d5",
+          "besoin_public": "Confirmer le rendez-vous pris.",
+          "experience_attendue": "Un suivi sans relance du public.",
+          "criticite": "majeure",
+          "etat_operationnel": "assure",
+          "frequence": "hebdomadaire",
+          "ordre_affichage": 1,
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "operation",
+      "rows": [
+        {
+          "id": "0427331b-703d-596f-ac21-7dabc30a5378",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "projet_pilote_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "nom": "Tenue du comptoir",
+          "responsable_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "frequence": "quotidienne",
+          "mode_execution": "humain",
+          "etat_operationnel": "assure",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "2b5d956e-a448-5b6e-a542-4738012f712d",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "projet_pilote_id": "028ef5b1-354b-5ca3-b352-b177b47a4852",
+          "nom": "Relance téléphonique de suivi",
+          "responsable_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "frequence": "hebdomadaire",
+          "mode_execution": "humain",
+          "etat_operationnel": "assure",
+          "cree_par": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "ressource",
+      "rows": [
+        {
+          "id": "15a784a2-ae26-594c-85ec-31a3885dce5f",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "projet_pilote_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "nom": "Salle d'accueil rez-de-chaussée",
+          "type_ressource": "local",
+          "etat": "disponible",
+          "responsable_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "7b3f9ca1-d103-5d3b-abd2-cf0ae6ad0f75",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "projet_pilote_id": "028ef5b1-354b-5ca3-b352-b177b47a4852",
+          "nom": "Planning agent synthétique",
+          "type_ressource": "logiciel",
+          "etat": "reserve",
+          "responsable_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "occurrence_operation",
+      "rows": [
+        {
+          "occurrence_contact_id": "aacd8663-99f7-5757-b2ee-9b109643def3",
+          "operation_id": "0427331b-703d-596f-ac21-7dabc30a5378",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "role_operation": "contributif"
+        },
+        {
+          "occurrence_contact_id": "3422e4a7-c424-5cee-bd06-6539c1b88e1f",
+          "operation_id": "2b5d956e-a448-5b6e-a542-4738012f712d",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "role_operation": "contributif"
+        }
+      ]
+    },
+    {
+      "table": "occurrence_ressource",
+      "rows": [
+        {
+          "occurrence_contact_id": "aacd8663-99f7-5757-b2ee-9b109643def3",
+          "ressource_id": "15a784a2-ae26-594c-85ec-31a3885dce5f",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "usage": "Guichet d'accueil",
+          "etat_utilisation": "utilise",
+          "role_occurrence": "necessaire"
+        },
+        {
+          "occurrence_contact_id": "3422e4a7-c424-5cee-bd06-6539c1b88e1f",
+          "ressource_id": "7b3f9ca1-d103-5d3b-abd2-cf0ae6ad0f75",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "usage": "Agenda de rappel",
+          "etat_utilisation": "utilise",
+          "role_occurrence": "insuffisante"
+        }
+      ]
+    },
+    {
+      "table": "constat",
+      "rows": [
+        {
+          "id": "82ef6fac-682f-5274-bcd6-b535ad7b6ef2",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "occurrence_contact_id": "aacd8663-99f7-5757-b2ee-9b109643def3",
+          "auteur_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "type_constat": "fait_valide",
+          "description": "Le guichet saturé produit une attente de 40 minutes en fin de matinée.",
+          "source": "Comptage synthétique sur 5 matinées",
+          "observe_le": "2026-02-03",
+          "niveau_confiance": "forte",
+          "statut_validation": "valide",
+          "cree_par": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "a61c9aa7-ab7e-5604-af24-5fd15264a2a9",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "occurrence_contact_id": "3422e4a7-c424-5cee-bd06-6539c1b88e1f",
+          "auteur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "type_constat": "hypothese",
+          "description": "Les rappels non tenus semblent venir d'un agenda non partagé.",
+          "source": "Dires d'équipe synthétiques",
+          "observe_le": "2026-02-04",
+          "niveau_confiance": "faible",
+          "statut_validation": "a_valider",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "action",
+      "rows": [
+        {
+          "id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "projet_pilote_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "titre": "Fiche de liaison d'accueil",
+          "description": "Une fiche unique reprise au guichet et au suivi téléphonique.",
+          "nature": "livrable",
+          "statut": "priorise",
+          "responsable_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "critere_acceptation": "La fiche reprend demande, pièce manquante et engagement pris.",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "7113aebc-6e05-50ce-935d-5bc2d05e64ec",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "projet_pilote_id": "028ef5b1-354b-5ca3-b352-b177b47a4852",
+          "titre": "Planning partagé des rappels",
+          "description": "Un agenda partagé par l'équipe pour les rappels de suivi.",
+          "nature": "support",
+          "statut": "propose",
+          "responsable_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "critere_acceptation": "Chaque rappel apparaît avec son agent et sa date.",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "ef35cbd0-a577-5482-a098-6abdd628cb28",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "projet_pilote_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "action_parent_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "titre": "Jalon test de la fiche",
+          "description": "Jalon de test de la fiche de liaison.",
+          "nature": "jalons",
+          "statut": "propose",
+          "responsable_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "critere_acceptation": "Test réalisé sur 3 accueil complets.",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "action_projet",
+      "rows": [
+        {
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "projet_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "motif_rattachement": "Livrable attendu du parcours d'accueil.",
+          "part_charge": 60,
+          "part_budget": 100
+        },
+        {
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "projet_id": "028ef5b1-354b-5ca3-b352-b177b47a4852",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "motif_rattachement": "Fiche utilisée par l'appui numérique.",
+          "part_charge": 40,
+          "part_budget": 0
+        },
+        {
+          "action_id": "7113aebc-6e05-50ce-935d-5bc2d05e64ec",
+          "projet_id": "028ef5b1-354b-5ca3-b352-b177b47a4852",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "motif_rattachement": "Support du suivi téléphonique.",
+          "part_charge": 100,
+          "part_budget": 100
+        }
+      ]
+    },
+    {
+      "table": "action_occurrence",
+      "rows": [
+        {
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "occurrence_contact_id": "aacd8663-99f7-5757-b2ee-9b109643def3",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "effet_attendu": "réduit",
+          "etat_validation_effet": "valide"
+        },
+        {
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "occurrence_contact_id": "3422e4a7-c424-5cee-bd06-6539c1b88e1f",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "effet_attendu": "fluidifie",
+          "etat_validation_effet": "non_valide"
+        }
+      ]
+    },
+    {
+      "table": "action_operation",
+      "rows": [
+        {
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "operation_id": "0427331b-703d-596f-ac21-7dabc30a5378",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "nature_intervention": "modifier"
+        }
+      ]
+    },
+    {
+      "table": "action_ressource",
+      "rows": [
+        {
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "ressource_id": "15a784a2-ae26-594c-85ec-31a3885dce5f",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "nature_intervention": "controler"
+        }
+      ]
+    },
+    {
+      "table": "action_constat",
+      "rows": [
+        {
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "constat_id": "82ef6fac-682f-5274-bcd6-b535ad7b6ef2",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9"
+        }
+      ]
+    },
+    {
+      "table": "dependance_action",
+      "rows": [
+        {
+          "action_id": "ef35cbd0-a577-5482-a098-6abdd628cb28",
+          "prerequis_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "justification": "Le jalon de test présuppose la fiche."
+        }
+      ]
+    },
+    {
+      "table": "contribution_action",
+      "rows": [
+        {
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "utilisateur_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "role_contribution": "responsable",
+          "charge_prevue_h": 8,
+          "charge_realisee_h": 3
+        },
+        {
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "utilisateur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "role_contribution": "consulte",
+          "charge_prevue_h": 1
+        }
+      ]
+    },
+    {
+      "table": "estimation_action",
+      "rows": [
+        {
+          "id": "721d1802-4138-5ed8-b9c0-b2b5a584618f",
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "auteur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "complexite_technique": "faible",
+          "complexite_organisationnelle": "moyenne",
+          "incertitude": "moyenne",
+          "charge_min_h": 6,
+          "charge_max_h": 18,
+          "cout_min": 300,
+          "cout_max": 900,
+          "devise": "EUR",
+          "justification": "Reprise d'un support existant, validation par l'équipe d'accueil.",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00"
+        },
+        {
+          "id": "919dc2c9-2491-5202-94a5-aecd94941e2e",
+          "action_id": "7113aebc-6e05-50ce-935d-5bc2d05e64ec",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "auteur_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "complexite_technique": "moyenne",
+          "complexite_organisationnelle": "forte",
+          "incertitude": "forte",
+          "charge_min_h": 4,
+          "charge_max_h": 12,
+          "justification": "Accord des agents sur un agenda partagé.",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00"
+        }
+      ]
+    },
+    {
+      "table": "evaluation_action",
+      "rows": [
+        {
+          "id": "1a5a1e4f-7ac5-5bea-bc6e-471b66f57b5b",
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "projet_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "auteur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "importance": "forte",
+          "impact_attendu": "forte",
+          "confiance": "moyenne",
+          "justification": "Réduit l'attente au guichet.",
+          "cree_le": "2026-02-05T09:00:00.000000+00:00"
+        },
+        {
+          "id": "639cdd5a-f4f8-5e20-bbc9-938d4b5600a0",
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "projet_id": "028ef5b1-354b-5ca3-b352-b177b47a4852",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "auteur_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "importance": "moyenne",
+          "impact_attendu": "moyenne",
+          "confiance": "faible",
+          "justification": "Apporte peu à l'appui numérique.",
+          "cree_le": "2026-02-05T09:30:00.000000+00:00"
+        },
+        {
+          "id": "d62f132d-6153-5923-b936-04d831d59295",
+          "action_id": "7113aebc-6e05-50ce-935d-5bc2d05e64ec",
+          "projet_id": "028ef5b1-354b-5ca3-b352-b177b47a4852",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "auteur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "importance": "forte",
+          "impact_attendu": "forte",
+          "confiance": "moyenne",
+          "justification": "Sécurise le suivi téléphonique.",
+          "cree_le": "2026-02-05T10:00:00.000000+00:00"
+        }
+      ]
+    },
+    {
+      "table": "decision_priorite",
+      "rows": [
+        {
+          "id": "12f5f79f-1ec0-5f24-bf19-4218bcded20b",
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "projet_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "estimation_retenue_id": "721d1802-4138-5ed8-b9c0-b2b5a584618f",
+          "evaluation_retenue_id": "1a5a1e4f-7ac5-5bea-bc6e-471b66f57b5b",
+          "classe_priorite": "programme",
+          "rang": 3,
+          "motif": "Retenu en programme avant la mesure d'attente.",
+          "decideur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "decide_le": "2026-01-10T09:00:00.000000+00:00"
+        },
+        {
+          "id": "c45de4bb-d974-5db9-a700-feb919b9bfa9",
+          "action_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "projet_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "estimation_retenue_id": "721d1802-4138-5ed8-b9c0-b2b5a584618f",
+          "evaluation_retenue_id": "1a5a1e4f-7ac5-5bea-bc6e-471b66f57b5b",
+          "classe_priorite": "a_traiter",
+          "rang": 1,
+          "motif": "Motivation traçable : attente mesurée à 40 minutes au guichet.",
+          "decideur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "decide_le": "2026-02-06T09:00:00.000000+00:00",
+          "remplace_decision_id": "12f5f79f-1ec0-5f24-bf19-4218bcded20b"
+        },
+        {
+          "id": "5666ca12-4ac2-5add-a989-c7b88cf2087e",
+          "action_id": "7113aebc-6e05-50ce-935d-5bc2d05e64ec",
+          "projet_id": "028ef5b1-354b-5ca3-b352-b177b47a4852",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "estimation_retenue_id": "919dc2c9-2491-5202-94a5-aecd94941e2e",
+          "evaluation_retenue_id": "d62f132d-6153-5923-b936-04d831d59295",
+          "classe_priorite": "a_traiter",
+          "rang": 1,
+          "motif": "Suivi sans agenda partagé : relances subies.",
+          "decideur_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "decide_le": "2026-02-06T10:00:00.000000+00:00"
+        }
+      ]
+    },
+    {
+      "table": "objet",
+      "rows": [
+        {
+          "id": "2d8a47bf-1ee9-5656-a076-a7122ad258aa",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "type_objet": "parcours",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "c4b17fb7-d11a-59a8-879e-1b1748870f27",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "type_objet": "version_parcours",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "360a4934-dfbf-5ed4-8910-961eae5976a4",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "type_objet": "etape",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "aacd8663-99f7-5757-b2ee-9b109643def3",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "type_objet": "occurrence_contact",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "82ef6fac-682f-5274-bcd6-b535ad7b6ef2",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "type_objet": "constat",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "type_objet": "action",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "c45de4bb-d974-5db9-a700-feb919b9bfa9",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "type_objet": "decision_priorite",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "15a784a2-ae26-594c-85ec-31a3885dce5f",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "type_objet": "ressource",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "0427331b-703d-596f-ac21-7dabc30a5378",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "type_objet": "operation",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "eeea1454-d44f-5239-bcce-c9e3eee8d895",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "type_objet": "indicateur",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "commentaire",
+      "rows": [
+        {
+          "id": "83f21d26-53fb-51ac-9106-115252f280a4",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "objet_id": "aacd8663-99f7-5757-b2ee-9b109643def3",
+          "auteur_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "contenu": "40 minutes d'attente constatées, à traiter avant l'été.",
+          "cree_le": "2026-02-04T11:00:00.000000+00:00"
+        },
+        {
+          "id": "4dfac523-3a57-5ade-8ee3-a49cfb971327",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "commentaire_parent_id": "83f21d26-53fb-51ac-9106-115252f280a4",
+          "objet_id": "aacd8663-99f7-5757-b2ee-9b109643def3",
+          "auteur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "contenu": "Commentaire rattaché au constat de file d'attente.",
+          "cree_le": "2026-02-04T12:00:00.000000+00:00"
+        }
+      ]
+    },
+    {
+      "table": "abonnement",
+      "rows": [
+        {
+          "objet_id": "aacd8663-99f7-5757-b2ee-9b109643def3",
+          "utilisateur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "niveau_notification": "a"
+        },
+        {
+          "objet_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "utilisateur_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "niveau_notification": "b"
+        }
+      ]
+    },
+    {
+      "table": "evenement",
+      "rows": [
+        {
+          "id": "790d5b4e-f027-5c05-a9c9-35c8e12244ef",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "objet_id": "36462979-914f-5bee-893a-0984f319c5f2",
+          "type_evenement": "cree",
+          "valeur_apres": "Fiche de liaison d'accueil",
+          "auteur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "horodatage": "2026-01-06T09:00:00.000000+00:00"
+        },
+        {
+          "id": "4bc8e4f7-27dc-53bc-ad40-559fe846a7f1",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "objet_id": "360a4934-dfbf-5ed4-8910-961eae5976a4",
+          "type_evenement": "modifie",
+          "valeur_avant": "Comprendre la demande.",
+          "valeur_apres": "Comprendre la demande et ses pièces.",
+          "auteur_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "horodatage": "2026-01-18T09:00:00.000000+00:00"
+        },
+        {
+          "id": "7d6db57a-f39d-50bb-970c-e26c41719626",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "objet_id": "aacd8663-99f7-5757-b2ee-9b109643def3",
+          "type_evenement": "commente",
+          "valeur_apres": "Commentaire de file d'attente",
+          "auteur_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "horodatage": "2026-02-04T11:00:00.000000+00:00"
+        }
+      ]
+    },
+    {
+      "table": "notification",
+      "rows": [
+        {
+          "id": "1e2c36ed-3a30-5065-b8cd-cb5a7c0a0584",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "destinataire_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "evenement_id": "7d6db57a-f39d-50bb-970c-e26c41719626",
+          "cree_le": "2026-02-04T11:05:00.000000+00:00"
+        },
+        {
+          "id": "96b0f284-0c3e-5589-ade7-c43f57e20016",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "destinataire_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "evenement_id": "4bc8e4f7-27dc-53bc-ad40-559fe846a7f1",
+          "cree_le": "2026-01-18T09:05:00.000000+00:00",
+          "lu_le": "2026-01-19T08:00:00.000000+00:00"
+        }
+      ]
+    },
+    {
+      "table": "indicateur",
+      "rows": [
+        {
+          "id": "eeea1454-d44f-5239-bcce-c9e3eee8d895",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "projet_id": "d433b0ab-5208-520a-8068-b00950d5f467",
+          "occurrence_contact_id": "aacd8663-99f7-5757-b2ee-9b109643def3",
+          "nom": "Temps d'attente au guichet",
+          "definition": "Moyenne mensuelle du temps d'attente mesuré au guichet (synthétique).",
+          "unite": "minutes",
+          "mode_calcul": "moyenne",
+          "valeur_reference": 12,
+          "valeur_cible": 5,
+          "sens_amelioration": "decroitre",
+          "periodicite": "mensuelle",
+          "responsable_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_par": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        },
+        {
+          "id": "2d6d6698-5bdf-51a4-9e82-ede1bb341444",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "projet_id": "028ef5b1-354b-5ca3-b352-b177b47a4852",
+          "nom": "Etapes couvertes par un support",
+          "definition": "Nombre d'étapes du parcours cible disposant d'un support associé.",
+          "unite": "etapes",
+          "mode_calcul": "comptage",
+          "sens_amelioration": "croitre",
+          "periodicite": "mensuelle",
+          "responsable_id": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_par": "7296f48c-4748-53f3-a73c-6847fa3c9ed8",
+          "cree_le": "2026-01-05T09:00:00.000000+00:00",
+          "modifie_par": null
+        }
+      ]
+    },
+    {
+      "table": "mesure_indicateur",
+      "rows": [
+        {
+          "id": "aaabee9a-22d7-5985-9a02-49aaa6140970",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "indicateur_id": "eeea1454-d44f-5239-bcce-c9e3eee8d895",
+          "periode_debut": "2026-01-01",
+          "periode_fin": "2026-01-31",
+          "valeur": 11,
+          "source": "Comptage synthétique",
+          "auteur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "niveau_confiance": "moyenne",
+          "cree_le": "2026-02-01T09:00:00.000000+00:00"
+        },
+        {
+          "id": "ab02100e-0631-5627-a7d8-de4940903bde",
+          "espace_id": "a850d82b-814e-540f-bf03-ef86588e90b9",
+          "indicateur_id": "eeea1454-d44f-5239-bcce-c9e3eee8d895",
+          "periode_debut": "2026-02-01",
+          "periode_fin": "2026-02-28",
+          "valeur": 14,
+          "source": "Comptage synthétique",
+          "auteur_id": "b5c7d06a-d5aa-5527-9739-4d9bce0be0ae",
+          "niveau_confiance": "moyenne",
+          "cree_le": "2026-03-01T09:00:00.000000+00:00"
+        }
+      ]
+    }
+  ],
+  "updates": [
+    {
+      "table": "parcours",
+      "id": "2d8a47bf-1ee9-5656-a076-a7122ad258aa",
+      "set": {
+        "version_observee_id": "c4b17fb7-d11a-59a8-879e-1b1748870f27",
+        "version_cible_id": "c843b409-7a98-57e6-930c-9e5b3d828713"
+      }
+    }
+  ]
+}

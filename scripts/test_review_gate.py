@@ -1,6 +1,11 @@
 import copy
+import io
+import json
 import unittest
-from review_gate import GateError, certificate_parts, evaluate
+from contextlib import redirect_stdout
+from unittest.mock import Mock, mock_open, patch
+
+from review_gate import GateError, certificate_parts, evaluate, index_body, main
 
 
 class GateTests(unittest.TestCase):
@@ -16,6 +21,20 @@ class GateTests(unittest.TestCase):
         self.certificate = {"head_sha": "abc", "decision": "approve", "summary": "F01", "validation": ["test passed"], "lines": [
             {"path": "app.py", "side": side, "line": 1, "reason": "F01 : raison spécifique justifiant cette modification"}
             for side in ("LEFT", "RIGHT")]}
+
+    def publish(self, certificate, snapshots=None, url="https://github.com/example#issuecomment-1"):
+        github = Mock()
+        github.snapshot.side_effect = snapshots or [self.snapshot, self.snapshot]
+        github.request.side_effect = [{"html_url": url}, {"html_url": "https://github.com/index"}, {}]
+        with patch("review_gate.GitHub", return_value=github), \
+             patch("builtins.open", mock_open(read_data=json.dumps(certificate))), \
+             patch("sys.argv", ["review_gate.py", "--pr", "26", "--certificate", "cert.json", "--publish"]), \
+             redirect_stdout(io.StringIO()):
+            try:
+                main()
+            except GateError as error:
+                return github, error
+        return github, None
 
     def test_complete_certificate(self):
         self.assertEqual(evaluate(self.snapshot, self.certificate), "abc")
@@ -65,6 +84,70 @@ class GateTests(unittest.TestCase):
         parts = certificate_parts({"lines": lines}, budget=200)
         self.assertGreater(len(parts), 1)
         self.assertEqual([line for part in parts for line in part], lines)
+
+    def test_large_validation_index_rejected_before_posts(self):
+        cert = copy.deepcopy(self.certificate)
+        cert["validation"] = [{"test": "api", "ok": True} for _ in range(1500)]
+        compact = {key: value for key, value in cert.items() if key != "lines"}
+        compact.update(line_count=2, line_justification_comments=[])
+        self.assertLessEqual(len(json.dumps(compact, ensure_ascii=False).encode("utf8")), 45000)
+        github, error = self.publish(cert)
+        self.assertIsInstance(error, GateError)
+        github.request.assert_not_called()
+
+    def test_index_utf8_and_url_reserve_boundary(self):
+        cert = copy.deepcopy(self.certificate)
+        cert["summary"] = "é"
+        index = {key: value for key, value in cert.items() if key != "lines"}
+        index.update(line_count=2, line_justification_comments=["x" * 2046])
+        cert["summary"] += "x" * (45000 - len(index_body(index).encode("utf8")))
+        url = "https://example.test/" + 'é"' * 300
+        github, error = self.publish(cert, url=url)
+        self.assertIsNone(error)
+        self.assertEqual(github.request.call_count, 3)
+        index_post = github.request.call_args_list[1].args
+        self.assertIn(json.dumps(url, ensure_ascii=False), index_post[2]["body"])
+        self.assertIn("/statuses/abc", github.request.call_args_list[2].args[0])
+        cert["summary"] += "é"
+        github, error = self.publish(cert)
+        self.assertIsInstance(error, GateError)
+        github.request.assert_not_called()
+
+    def test_reserve_counts_every_part_before_posts(self):
+        cert = copy.deepcopy(self.certificate)
+        for line in cert["lines"]:
+            line["reason"] = "F01 justification " + "x" * 26000
+        self.assertEqual(len(certificate_parts(cert)), 2)
+        index = {key: value for key, value in cert.items() if key != "lines"}
+        index.update(line_count=2, line_justification_comments=["x" * 2046] * 2)
+        cert["summary"] += "x" * (45001 - len(index_body(index).encode("utf8")))
+        github, error = self.publish(cert)
+        self.assertIsInstance(error, GateError)
+        github.request.assert_not_called()
+
+    def test_oversized_returned_url_never_publishes_index_or_status(self):
+        github, error = self.publish(self.certificate, url="é" * 1024)
+        self.assertIsInstance(error, GateError)
+        self.assertEqual(github.request.call_count, 1)
+
+    def test_invalid_certificates_and_coderabbit_never_post(self):
+        for mutation in ("coverage", "sha", "coderabbit"):
+            cert = copy.deepcopy(self.certificate)
+            snapshot = copy.deepcopy(self.snapshot)
+            if mutation == "coverage": cert["lines"].pop()
+            elif mutation == "sha": cert["head_sha"] = "old"
+            else: snapshot["reviews"] = []
+            with self.subTest(mutation=mutation):
+                github, error = self.publish(cert, [snapshot])
+                self.assertIsInstance(error, GateError)
+                github.request.assert_not_called()
+
+    def test_sha_change_before_index_never_publishes_reviewer_status(self):
+        stale = copy.deepcopy(self.snapshot)
+        stale["pr"]["head"]["sha"] = "new"
+        github, error = self.publish(self.certificate, [self.snapshot, stale])
+        self.assertIsInstance(error, GateError)
+        self.assertEqual(github.request.call_count, 1)
 
     def test_oversized_single_reason_is_rejected(self):
         with self.assertRaises(GateError):

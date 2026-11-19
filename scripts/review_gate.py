@@ -179,6 +179,10 @@ def certificate_parts(certificate, budget=50000):
     return parts
 
 
+def index_body(index):
+    return "## Validation du Reviewer JournAI\n\nModèle : GPT-6.1 Sol xHigh, harness Pi.\n\n```json\n" + json.dumps(index, ensure_ascii=False, indent=2) + "\n```"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pr", required=True, type=int)
@@ -200,17 +204,21 @@ def main():
         parts = certificate_parts(certificate)
         index = {key: value for key, value in certificate.items() if key != "lines"}
         index["line_count"] = len(certificate.get("lines", []))
-        index["line_justification_comments"] = []
-        # Validate the index size before publishing any part.
-        if len(json.dumps(index, ensure_ascii=False).encode()) > 45000:
+        # Reserve 2048 serialized bytes per returned URL before any POST.
+        index["line_justification_comments"] = ["x" * 2046] * len(parts)
+        if len(index_body(index).encode("utf8")) > 45000:
             raise GateError("Résumé de certificat trop volumineux")
+        index["line_justification_comments"] = []
         for number, lines in enumerate(parts, 1):
             part = {"head_sha": sha, "part": number, "total_parts": len(parts), "lines": lines}
             evidence = github.request(f"{prefix}/issues/{args.pr}/comments", "POST", {
                 "body": "## Reviewer JournAI — justification des lignes\n\n```json\n" + json.dumps(part, ensure_ascii=False) + "\n```"})
-            index["line_justification_comments"].append(evidence["html_url"])
-        body = "## Validation du Reviewer JournAI\n\nModèle : GPT-6.1 Sol xHigh, harness Pi.\n\n```json\n" + json.dumps(index, ensure_ascii=False, indent=2) + "\n```"
-        if len(body.encode()) > 60000:
+            url = evidence["html_url"]
+            if len(json.dumps(url, ensure_ascii=False).encode("utf8")) > 2048:
+                raise GateError("URL de justification trop volumineuse")
+            index["line_justification_comments"].append(url)
+        body = index_body(index)
+        if len(body.encode("utf8")) > 60000:
             raise GateError("Index de certificat trop volumineux")
         if evaluate(github.snapshot(args.pr), certificate) != sha:
             raise GateError("Le SHA a changé pendant la publication du certificat")
