@@ -58,6 +58,10 @@ def _values(values: object, columns: set[str], nullable: set[str], integer_colum
             isinstance(value, float) and not math.isfinite(value)
         ) or (isinstance(value, int) and not -(2**63) <= value < 2**63):
             raise SeedError(f"{table} : valeur non scalaire ou invalide")
+    for key in values.keys() & integer_columns:
+        value = values[key]
+        if not (type(value) is int or (value is None and key in nullable)):
+            raise SeedError(f"{table} : {key} doit être un entier JSON")
     try:
         validation.normalize_values(values, nullable, integer_columns)
     except ValueError as exc:
