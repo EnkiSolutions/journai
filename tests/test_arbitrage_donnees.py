@@ -25,7 +25,7 @@ class ArbitrageDonneesTests(unittest.TestCase):
         self.addCleanup(self.close)
         c = self.connection
         self.assertEqual(c.execute('PRAGMA foreign_keys').fetchone()[0], 1)
-        self.assertEqual(migrations.migrate(c, SCHEMA), [f'{n:04}' for n in range(1, 11)])
+        self.assertEqual(migrations.migrate(c, SCHEMA), [f'{n:04}' for n in range(1, 12)])
         for number in (1, 2, 3):
             c.execute('INSERT INTO utilisateur (id, nom_affiche, email, cree_le) VALUES (?, ?, ?, ?)',
                       (uid(1, number), f'Utilisateur {number}', f'test{number}@example.invalid', NOW))

@@ -132,6 +132,66 @@ class SeedTests(unittest.TestCase):
         finally:
             connection.close()
 
+    def test_charge_cost_types_are_validated_before_insert_or_replace(self):
+        base = self.read_fixture()
+        connection = db.connect(self.path)
+        self.addCleanup(connection.close)
+        for replace in (False, True):
+            if replace:
+                self.write_fixture(base)
+                seed.seeded(connection, self.fixtures, env="test")
+            before = list(connection.iterdump())
+            for table, columns in seed.NUMERIC_COLUMNS.items():
+                for column in columns:
+                    for value in ("texte", "2", True, False, float("inf")):
+                        for operation in (("insert", "update") if table == "estimation_action" else ("insert",)):
+                            with self.subTest(replace=replace, table=table, column=column,
+                                              value=value, operation=operation):
+                                data = json.loads(json.dumps(base))
+                                entry = next(item for item in data["tables"] if item["table"] == table)
+                                if operation == "insert":
+                                    if table == "estimation_action" and column == "charge_max_h":
+                                        entry["rows"][0].update(charge_min_h=1, charge_probable_h=2)
+                                    entry["rows"][0][column] = value
+                                else:
+                                    data["updates"].append({"table": table, "id": entry["rows"][0]["id"],
+                                                            "set": {column: value}})
+                                self.write_fixture(data)
+                                statements = []
+                                connection.set_trace_callback(statements.append)
+                                try:
+                                    with self.assertRaises(seed.SeedError):
+                                        seed.seeded(connection, self.fixtures, env="test", replace=replace,
+                                                    allow_replace=replace)
+                                finally:
+                                    connection.set_trace_callback(None)
+                                self.assertFalse(any(sql.lstrip().upper().startswith(("INSERT ", "UPDATE ", "DELETE "))
+                                                     for sql in statements))
+                                self.assertEqual(list(connection.iterdump()), before)
+        self.assertEqual(db.integrity_problems(connection), [])
+
+    def test_charge_cost_valid_numbers_and_null(self):
+        base = self.read_fixture()
+        connection = db.connect(self.path)
+        self.addCleanup(connection.close)
+        for value in (0, 2.5, None):
+            data = json.loads(json.dumps(base))
+            for table, columns in seed.NUMERIC_COLUMNS.items():
+                entry = next(item for item in data["tables"] if item["table"] == table)
+                entry["rows"][0].update({column: value for column in columns})
+                if table == "estimation_action":
+                    data["updates"].append({"table": table, "id": entry["rows"][0]["id"],
+                                            "set": {column: value for column in columns}})
+            self.write_fixture(data)
+            seed.seeded(connection, self.fixtures, env="test", replace=True, allow_replace=True)
+            for table, columns in seed.NUMERIC_COLUMNS.items():
+                row = next(item for item in data["tables"] if item["table"] == table)["rows"][0]
+                where = "id = ?" if table == "estimation_action" else "action_id = ? AND utilisateur_id = ?"
+                params = (row["id"],) if table == "estimation_action" else (row["action_id"], row["utilisateur_id"])
+                stored = connection.execute(f"SELECT {', '.join(sorted(columns))} FROM {table} WHERE {where}", params)
+                self.assertEqual(tuple(stored.fetchone()), (value,) * len(columns))
+            self.assertEqual(db.integrity_problems(connection), [])
+
     def test_two_fixtures_counts_and_explicit_replacement(self):
         shutil.copy2(FIXTURES / "espace-b.json", self.fixtures)
         connection = db.connect(self.path)

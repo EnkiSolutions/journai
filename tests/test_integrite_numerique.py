@@ -114,5 +114,99 @@ class IntegriteNumeriqueTests(unittest.TestCase):
         self.assertEqual(db.integrity_problems(self.c), [])
 
 
+class ChargeCostTypeTests(unittest.TestCase):
+    estimation = IntegriteNumeriqueTests.estimation
+    mesure = IntegriteNumeriqueTests.mesure
+    reopen = IntegriteNumeriqueTests.reopen
+    COLUMNS = {
+        'contribution_action': ('charge_prevue_h', 'charge_realisee_h'),
+        'estimation_action': ('charge_min_h', 'charge_probable_h', 'charge_max_h',
+                              'cout_min', 'cout_probable', 'cout_max'),
+    }
+
+    def setUp(self):
+        IntegriteNumeriqueTests.setUp(self)
+        self.schema_10 = Path(self.temp.name) / 'schema_10'
+        self.schema_10.mkdir()
+        for file in SCHEMA.glob('*.sql'):
+            if file.name[:4] <= '0010':
+                shutil.copyfile(file, self.schema_10 / file.name)
+        migrations.migrate(self.c, self.schema_10)
+        self.c.execute("INSERT INTO utilisateur (id, nom_affiche, email, cree_le) VALUES ('u2', 'U2', 'u2@example.invalid', ?)", (NOW,))
+        self.c.execute("INSERT INTO contribution_action (action_id, utilisateur_id, espace_id, role_contribution) VALUES ('a', 'u', 'e', 'contributeur')")
+        self.c.execute('UPDATE estimation_action SET charge_min_h=NULL, charge_max_h=NULL, cout_min=NULL, cout_max=NULL')
+        self.c.commit()
+
+    def insert(self, table, column, value):
+        if table == 'contribution_action':
+            self.c.execute(f"INSERT INTO contribution_action (action_id, utilisateur_id, espace_id, role_contribution, {column}) VALUES ('a', 'u2', 'e', 'contributeur', ?)", (value,))
+        else:
+            self.c.execute(f"INSERT INTO estimation_action (id, action_id, espace_id, auteur_id, complexite_technique, complexite_organisationnelle, incertitude, justification, cree_le, {column}) VALUES ('new', 'a', 'e', 'u', 'faible', 'faible', 'faible', 'J', ?, ?)", (NOW, value))
+
+    def test_upgrade_valid_preserves_data_and_journal(self):
+        self.c.execute("UPDATE contribution_action SET charge_prevue_h=2.5")
+        self.c.execute("UPDATE estimation_action SET charge_min_h=1, charge_probable_h=2, charge_max_h=3")
+        self.c.commit()
+        tables = ('contribution_action', 'estimation_action', 'schema_migration')
+        before = {table: [tuple(row) for row in self.c.execute(f'SELECT * FROM {table}')]
+                  for table in tables}
+        self.assertEqual(migrations.migrate(self.c, SCHEMA), ['0011'])
+        self.reopen()
+        for table in tables[:2]:
+            self.assertEqual([tuple(row) for row in self.c.execute(f'SELECT * FROM {table}')], before[table])
+        self.assertEqual([tuple(row) for row in self.c.execute("SELECT * FROM schema_migration WHERE version < '0011' ORDER BY version")], before['schema_migration'])
+        self.assertEqual(migrations.migrate(self.c, SCHEMA), [])
+        self.assertEqual(db.integrity_problems(self.c), [])
+
+    def test_upgrade_refuses_each_invalid_stored_value_atomically(self):
+        for table, columns in self.COLUMNS.items():
+            for column in columns:
+                for value in ('texte', b'bytes', float('inf')):
+                    with self.subTest(table=table, column=column, value=value):
+                        self.c.execute(f'UPDATE {table} SET {column}=?', (value,))
+                        self.c.commit()
+                        before = list(self.c.iterdump())
+                        journal = [tuple(row) for row in self.c.execute('SELECT * FROM schema_migration ORDER BY version')]
+                        with self.assertRaisesRegex(migrations.MigrationError, 'types_charges_couts_invalides'):
+                            migrations.migrate(self.c, SCHEMA)
+                        self.assertEqual(list(self.c.iterdump()), before)
+                        self.reopen()
+                        self.assertEqual(list(self.c.iterdump()), before)
+                        self.assertEqual([tuple(row) for row in self.c.execute('SELECT * FROM schema_migration ORDER BY version')], journal)
+                        self.assertEqual(migrations.applied_versions(self.c), [f'{n:04}' for n in range(1, 11)])
+                        self.c.execute(f'UPDATE {table} SET {column}=NULL')
+                        self.c.commit()
+
+    def test_direct_insert_update_types_and_existing_integrity(self):
+        migrations.migrate(self.c, SCHEMA)
+        for table, columns in self.COLUMNS.items():
+            for column in columns:
+                for value in ('texte', b'bytes', float('inf'), float('-inf')):
+                    with self.subTest(table=table, column=column, value=value):
+                        with self.assertRaisesRegex(sqlite3.IntegrityError, 'types charges couts'):
+                            self.insert(table, column, value)
+                        with self.assertRaisesRegex(sqlite3.IntegrityError, 'types charges couts'):
+                            self.c.execute(f'UPDATE {table} SET {column}=?', (value,))
+                        self.assertIsNone(self.c.execute(f'SELECT {column} FROM {table}').fetchone()[0])
+                        self.assertEqual(self.c.execute(f'SELECT count(*) FROM {table}').fetchone()[0], 1)
+                for value, stored_type in ((None, 'null'), (2, 'integer'), (2.5, 'real'), ('2', 'integer'), (True, 'integer')):
+                    with self.subTest(table=table, column=column, value=value):
+                        self.insert(table, column, value)
+                        where = "utilisateur_id='u2'" if table == 'contribution_action' else "id='new'"
+                        row = self.c.execute(f'SELECT {column}, typeof({column}) FROM {table} WHERE {where}').fetchone()
+                        self.assertEqual(tuple(row), (value if value != '2' else 2, stored_type))
+                        self.c.execute(f'DELETE FROM {table} WHERE {where}')
+                        self.c.execute(f'UPDATE {table} SET {column}=?', (value,))
+                        row = self.c.execute(f'SELECT {column}, typeof({column}) FROM {table}').fetchone()
+                        self.assertEqual(tuple(row), (value if value != '2' else 2, stored_type))
+                        self.c.execute(f'UPDATE {table} SET {column}=NULL')
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.c.execute('UPDATE contribution_action SET charge_prevue_h=-1')
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.c.execute('UPDATE estimation_action SET charge_min_h=3, charge_max_h=1')
+        self.c.commit()
+        self.assertEqual(db.integrity_problems(self.c), [])
+
+
 if __name__ == '__main__':
     unittest.main()

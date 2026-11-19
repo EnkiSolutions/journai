@@ -23,7 +23,7 @@ class ConstatsOccurrencesTests(unittest.TestCase):
         self.connection = db.connect(self.path)
         self.addCleanup(self.close)
         self.assertEqual(migrations.migrate(self.connection, SCHEMA),
-                         [f'{n:04}' for n in range(1, 11)])
+                         [f'{n:04}' for n in range(1, 12)])
         c = self.connection
         for number in (1, 2):
             c.execute('INSERT INTO utilisateur (id, nom_affiche, email, cree_le) VALUES (?, ?, ?, ?)',

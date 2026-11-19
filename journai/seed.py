@@ -14,6 +14,11 @@ from journai.config import load_config
 from journai.migrations import JOURNAL_TABLE, applied_versions
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
+NUMERIC_COLUMNS = {
+    "contribution_action": {"charge_prevue_h", "charge_realisee_h"},
+    "estimation_action": {"charge_min_h", "charge_probable_h", "charge_max_h",
+                          "cout_min", "cout_probable", "cout_max"},
+}
 
 
 class SeedError(RuntimeError):
@@ -58,6 +63,10 @@ def _values(values: object, columns: set[str], nullable: set[str], integer_colum
             isinstance(value, float) and not math.isfinite(value)
         ) or (isinstance(value, int) and not -(2**63) <= value < 2**63):
             raise SeedError(f"{table} : valeur non scalaire ou invalide")
+    for key in NUMERIC_COLUMNS.get(table, set()) & values.keys():
+        value = values[key]
+        if value is not None and type(value) not in (int, float):
+            raise SeedError(f"{table} : {key} doit être un nombre JSON")
     try:
         validation.normalize_values(values, nullable, integer_columns)
     except ValueError as exc:

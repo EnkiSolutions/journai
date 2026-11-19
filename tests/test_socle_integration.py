@@ -36,7 +36,7 @@ class SocleIntegrationTests(unittest.TestCase):
             self.assertEqual(config.env, "test")
             self.assertEqual(config.schema_dir, SCHEMA)
             self.assertEqual({p.name for p in FIXTURES.glob("*.json")}, {"espace-a.json", "espace-b.json"})
-            versions = [f"{number:04}" for number in range(1, 11)]
+            versions = [f"{number:04}" for number in range(1, 12)]
             connection = db.connect(config.db_path)
             try:
                 self.assertEqual(migrations.migrate(connection, config.schema_dir), versions)

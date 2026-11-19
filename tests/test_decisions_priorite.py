@@ -217,6 +217,10 @@ class DecisionEspaceMigrationTests(unittest.TestCase):
         for path in arb.SCHEMA.glob('*.sql'):
             if path.name[:4] <= '0009':
                 shutil.copyfile(path, self.old_schema / path.name)
+        self.schema_10 = Path(directory.name) / 'schema_10'
+        shutil.copytree(self.old_schema, self.schema_10)
+        for path in arb.SCHEMA.glob('0010_*.sql'):
+            shutil.copyfile(path, self.schema_10 / path.name)
         self.path = Path(directory.name) / 'decisions.db'
         self.connection = arb.db.connect(self.path)
         self.addCleanup(self.close)
@@ -251,14 +255,14 @@ class DecisionEspaceMigrationTests(unittest.TestCase):
         self.connection.commit()
         before = self.snapshots()
         journal = [tuple(row) for row in self.connection.execute('SELECT * FROM schema_migration ORDER BY version')]
-        self.assertEqual(arb.migrations.migrate(self.connection, arb.SCHEMA), ['0010'])
+        self.assertEqual(arb.migrations.migrate(self.connection, self.schema_10), ['0010'])
         self.close()
         self.connection = arb.db.connect(self.path)
         self.assertEqual(self.snapshots(), before)
         rows = [tuple(row) for row in self.connection.execute('SELECT * FROM schema_migration ORDER BY version')]
         self.assertEqual(rows[:-1], journal)
         self.assertEqual(rows[-1][0], '0010')
-        self.assertEqual(arb.migrations.migrate(self.connection, arb.SCHEMA), [])
+        self.assertEqual(arb.migrations.migrate(self.connection, self.schema_10), [])
         self.assertEqual(arb.db.integrity_problems(self.connection), [])
 
     def test_migration_rejects_existing_cross_space_link_without_changes(self):
@@ -271,7 +275,7 @@ class DecisionEspaceMigrationTests(unittest.TestCase):
         before = list(self.connection.iterdump())
         journal = [tuple(row) for row in self.connection.execute('SELECT * FROM schema_migration ORDER BY version')]
         with self.assertRaisesRegex(arb.migrations.MigrationError, 'decisions_espaces_incoherents'):
-            arb.migrations.migrate(self.connection, arb.SCHEMA)
+            arb.migrations.migrate(self.connection, self.schema_10)
         self.close()
         self.connection = arb.db.connect(self.path)
         self.assertEqual(list(self.connection.iterdump()), before)
