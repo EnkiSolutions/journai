@@ -420,14 +420,9 @@ Le selftest isolé utilise le paquet installé. Ruff format, pyright et pip-audi
 exécutés par ce flux. `.github/workflows/review-gate.yml` exécute les tests du gate ; le script
 `scripts/review_gate.py`, pas ce seul workflow, contrôle le certificat et le SHA.
 
-**Périmètre des contrôles et du diff** : `AGENTS.md`, `docs/workflow.md` et `docs/backlog.md`
-sont déjà présents sur la base et non modifiés dans le diff de la PR : ils définissent contrat,
-responsabilités de revue et traçabilité des features (C1). Le workflow `review-gate.yml` est lui
-également présent sur la base ; `.github/workflows/coderabbit-gate.yml` n’existe pas à ce SHA.
-Le diff ajoute `.github/workflows/ci.yml` pour la qualité, le typage, les tests et le selftest de
-démarrage (C3), et modifie `scripts/review_gate.py` et `scripts/test_review_gate.py` pour
-encadrer la taille de publication du certificat de revue et tester ces limites (C1). Ces contrôles ne valent ni approbation CodeRabbit
-ni revue Reviewer.
+**Périmètre des contrôles et du diff** : pour la baseline `b7cda5fa3112434aae8b68b85ceb26e3d85d58f3`, le diff officiel de la PR #26 (`/pulls/26` et `/pulls/26/files`), basé sur `bbeb74d82396777fa274c7b94bea1e77c2a4ad5d`, expose 66 fichiers. Le delta de cette baseline face au `main` observé à `0eb02f898d5a380f61b781d9213e19efaaa04ecd`, son ancêtre, en expose 62 ; ces nombres décrivent ces références, pas les prochains SHA.
+
+Dans le diff officiel figurent `AGENTS.md`, `docs/workflow.md`, `docs/backlog.md` et `.github/workflows/review-gate.yml` ; ils sont déjà intégrés et identiques à ce `main`. Génériques, ils ne sont ni à annuler ni à présenter comme des livrables F01. Face à ce même `main`, les modifications de `scripts/review_gate.py` et `scripts/test_review_gate.py` accompagnent F01 : elles contrôlent la taille UTF-8 réelle de l’index du certificat exhaustif lié au SHA, réservent la place des liens et refusent avant publication les index trop volumineux pour éviter des parties orphelines prévisibles. Le flux propre à F01 `.github/workflows/ci.yml` couvre qualité, typage, tests et selftest de démarrage (C3). Ces contrôles ne valent ni approbation CodeRabbit ni revue Reviewer.
 
 ## État d’exécution du socle — unité M4-CI-CONTRACT-1
 
