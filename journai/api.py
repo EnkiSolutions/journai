@@ -94,7 +94,6 @@ class ApiHandler(BaseHTTPRequestHandler):
         lengths = self.headers.get_all("Content-Length", [])
         if (len(lengths) > 1 or (lengths and lengths[0] != "0") or
                 self.headers.get_all("Transfer-Encoding", []) or self.headers.get_all("Cookie", [])):
-            self._discard_body()
             self.close_connection = True
             raise QueryError(400)
 
@@ -163,13 +162,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             return self._method_not_allowed
         raise AttributeError(name)
 
-    def _discard_body(self):
-        lengths = self.headers.get_all("Content-Length", [])
-        if len(lengths) == 1 and lengths[0].isascii() and lengths[0].isdigit() and len(lengths[0]) < 7:
-            self.rfile.read(int(lengths[0]))
-
     def _method_not_allowed(self):
-        self._discard_body()
         self.close_connection = True
         self._error(405)
 

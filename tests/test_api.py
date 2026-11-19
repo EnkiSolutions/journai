@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import http.client
+import io
 import json
 import os
 import sqlite3
@@ -13,11 +14,13 @@ import time
 import unittest
 from contextlib import closing
 from dataclasses import replace
+from email.message import Message
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, call, patch
 
 from journai import db, migrations, seed
-from journai.api import ApiServer
+from journai.api import ApiHandler, ApiServer
 from journai.config import Config
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +42,41 @@ def token(user=ADMIN, space=SPACE, *, iat=None, exp=None, key=KEY):
     encode = lambda value: base64.urlsafe_b64encode(value).decode().rstrip("=")
     signed = "v1." + encode(payload)
     return signed + "." + encode(hmac.digest(key.encode(), signed.encode(), hashlib.sha256))
+
+
+class RejectedBodyTests(unittest.TestCase):
+    def test_rejections_close_before_response_without_reading_body(self):
+        rejected_headers = (
+            [("Content-Length", "1")],
+            [("Content-Length", "0"), ("Content-Length", "0")],
+            [("Transfer-Encoding", "chunked")],
+            [("Cookie", "synthetic=value")],
+        )
+        cases = [(method, headers, 400) for method in ("GET", "HEAD", "OPTIONS")
+                 for headers in rejected_headers]
+        cases += [(method, headers, 405) for method in ("POST", "PUT", "CUSTOM")
+                  for headers in ([], [("Content-Length", "1")], [("Transfer-Encoding", "chunked")])]
+        for method, headers, status in cases:
+            with self.subTest(method=method, headers=headers):
+                handler = object.__new__(ApiHandler)
+                handler.command = method
+                handler.headers = Message()
+                for name, value in headers:
+                    handler.headers.add_header(name, value)
+                handler.server = SimpleNamespace(config=SimpleNamespace(cors_origin=""))
+                handler.close_connection = False
+                handler.rfile = Mock()
+                handler.wfile = io.BytesIO()
+                handler.send_response = Mock(side_effect=lambda code: self.assertTrue(handler.close_connection))
+                handler.send_header = Mock()
+                handler.end_headers = Mock()
+                getattr(handler, "do_" + method)()
+                handler.send_response.assert_called_once_with(status)
+                handler.rfile.read.assert_not_called()
+                if status == 405:
+                    self.assertIn(call("Allow", "GET, HEAD, OPTIONS"), handler.send_header.call_args_list)
+                if method == "HEAD":
+                    self.assertEqual(handler.wfile.getvalue(), b"")
 
 
 class HttpTests(unittest.TestCase):
